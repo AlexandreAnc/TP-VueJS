@@ -25,8 +25,12 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      # Le front (racine) et l’API sont deux projets pnpm distincts : Vitest importe api/src/*.mjs
+      # et doit résoudre cors, express, pg depuis api/node_modules.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm install --frozen-lockfile --dir api
 
       - name: Run tests with coverage
         run: pnpm test:coverage
