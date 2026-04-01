@@ -1,11 +1,50 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { apiUrl } from '../utils/apiBase.js'
 
 const step = ref(1)
 const submitted = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
+
+const featured = ref([])
+const featuredLoading = ref(true)
+const featuredError = ref('')
+
+function formatDateShort(iso) {
+  if (!iso) return ''
+  try {
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'medium',
+    }).format(new Date(iso))
+  } catch {
+    return ''
+  }
+}
+
+async function loadFeatured() {
+  featuredLoading.value = true
+  featuredError.value = ''
+  try {
+    const res = await fetch(apiUrl('/api/avis/public?limit=24'))
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      featuredError.value = data.error || 'Impossible de charger les avis mis en avant.'
+      featured.value = []
+      return
+    }
+    featured.value = Array.isArray(data.items) ? data.items : []
+  } catch {
+    featuredError.value = 'Impossible de charger les avis mis en avant.'
+    featured.value = []
+  } finally {
+    featuredLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadFeatured()
+})
 
 const form = reactive({
   name: '',
@@ -93,8 +132,66 @@ async function submitAvis() {
   <section class="page-card avis-page">
     <h1>Avis</h1>
     <p class="lead">
-      Partagez votre expérience en trois étapes. Vous pouvez revenir en arrière pour modifier
-      avant validation.
+      Découvrez les retours publiés par l’équipe, puis partagez le vôtre en trois étapes.
+    </p>
+
+    <div class="featured-section">
+      <h2 class="featured-heading">Avis mis en avant</h2>
+      <v-progress-linear v-if="featuredLoading" indeterminate color="primary" class="mb-4" />
+      <v-alert
+        v-else-if="featuredError"
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
+        {{ featuredError }}
+      </v-alert>
+      <p
+        v-else-if="!featured.length"
+        class="featured-empty text-body-2 text-medium-emphasis"
+      >
+        Aucun avis public pour l’instant. Les messages apparaissent ici une fois validés par un
+        administrateur (Back Office).
+      </p>
+      <div v-else class="featured-grid">
+        <v-card
+          v-for="a in featured"
+          :key="a.id"
+          variant="outlined"
+          class="featured-card"
+          rounded="lg"
+        >
+          <v-card-item>
+            <v-card-title class="featured-card-title text-wrap">
+              {{ a.name }}
+            </v-card-title>
+            <v-card-subtitle>{{ formatDateShort(a.createdAt) }}</v-card-subtitle>
+          </v-card-item>
+          <v-card-text>
+            <div class="featured-rating-row">
+              <v-rating
+                :model-value="a.rating"
+                readonly
+                density="compact"
+                color="amber-darken-2"
+                size="small"
+                half-increments
+              />
+              <span class="text-caption text-medium-emphasis">{{ a.rating }}/5</span>
+            </div>
+            <p class="featured-comment">{{ a.comment }}</p>
+            <p class="featured-reco text-caption text-medium-emphasis">
+              Recommandation : {{ a.wouldRecommend ? 'oui' : 'non' }}
+            </p>
+          </v-card-text>
+        </v-card>
+      </div>
+    </div>
+
+    <h2 class="form-section-title">Laisser un avis</h2>
+    <p class="lead form-lead">
+      Vous pouvez revenir en arrière pour modifier avant validation.
     </p>
 
     <v-alert
@@ -397,5 +494,70 @@ async function submitAvis() {
   margin-top: 1.25rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-200);
+}
+
+.featured-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-200);
+}
+
+.featured-heading {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-800);
+}
+
+.featured-empty {
+  margin: 0;
+}
+
+.featured-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1rem;
+}
+
+.featured-card {
+  border-color: var(--color-200) !important;
+  height: 100%;
+}
+
+.featured-card-title {
+  font-size: 1rem;
+  line-height: 1.35;
+  padding-bottom: 0.25rem;
+}
+
+.featured-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.featured-comment {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--color-800);
+}
+
+.featured-reco {
+  margin: 0.75rem 0 0;
+}
+
+.form-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-800);
+}
+
+.form-lead {
+  margin-bottom: 1.25rem;
 }
 </style>

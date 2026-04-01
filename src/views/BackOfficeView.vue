@@ -8,13 +8,17 @@ const { isLoggedIn } = useAuth()
 const items = ref([])
 const loading = ref(false)
 const loadError = ref('')
+const pendingId = ref(null)
+const pendingAction = ref('')
 
 const headers = [
   { title: 'Nom', key: 'name', sortable: true },
   { title: 'Note', key: 'rating', sortable: true, width: '88px' },
   { title: 'Commentaire', key: 'commentPreview', sortable: false },
   { title: 'Reco', key: 'recoLabel', sortable: true, width: '80px' },
+  { title: 'Publication', key: 'whitelistLabel', sortable: true, width: '120px' },
   { title: 'Date', key: 'dateLabel', sortable: true, width: '140px' },
+  { title: 'Actions', key: 'actions', sortable: false, width: '220px', align: 'end' },
 ]
 
 function formatDate(iso) {
@@ -37,6 +41,7 @@ function enrichRows(rows) {
       recoLabel: row.wouldRecommend ? 'Oui' : 'Non',
       dateLabel: formatDate(row.createdAt),
       commentPreview: c.length > 140 ? `${c.slice(0, 140)}…` : c,
+      whitelistLabel: row.whitelisted ? 'À la une' : 'En attente',
     }
   })
 }
@@ -45,7 +50,7 @@ async function loadAvis() {
   loadError.value = ''
   loading.value = true
   try {
-    const res = await fetch(apiUrl('/api/avis?limit=50'))
+    const res = await fetch(apiUrl('/api/avis?limit=100'))
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       loadError.value = data.error || `Erreur ${res.status}`
@@ -61,6 +66,51 @@ async function loadAvis() {
   }
 }
 
+async function toggleWhitelist(item) {
+  loadError.value = ''
+  pendingId.value = item.id
+  pendingAction.value = 'patch'
+  try {
+    const res = await fetch(apiUrl(`/api/avis/${item.id}`), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ whitelisted: !item.whitelisted }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      loadError.value = data.error || `Erreur ${res.status}`
+      return
+    }
+    await loadAvis()
+  } catch {
+    loadError.value = 'Action impossible. Vérifiez l’API.'
+  } finally {
+    pendingId.value = null
+    pendingAction.value = ''
+  }
+}
+
+async function deleteOne(item) {
+  if (!confirm(`Supprimer définitivement l’avis de « ${item.name} » ?`)) return
+  loadError.value = ''
+  pendingId.value = item.id
+  pendingAction.value = 'delete'
+  try {
+    const res = await fetch(apiUrl(`/api/avis/${item.id}`), { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      loadError.value = data.error || `Erreur ${res.status}`
+      return
+    }
+    await loadAvis()
+  } catch {
+    loadError.value = 'Suppression impossible. Vérifiez l’API.'
+  } finally {
+    pendingId.value = null
+    pendingAction.value = ''
+  }
+}
+
 onMounted(() => {
   if (isLoggedIn.value) loadAvis()
 })
@@ -70,7 +120,7 @@ onMounted(() => {
   <section class="page-card back-office">
     <h1>Back Office</h1>
     <p class="lead">
-      Espace réservé aux administrateurs. Les avis récents proviennent de la base via l’API.
+      Gérez les avis : mettez-les « à la une » pour les afficher sur la page publique Avis, ou supprimez-les.
     </p>
 
     <v-alert
@@ -110,6 +160,7 @@ onMounted(() => {
         </v-alert>
 
         <v-data-table
+          item-value="id"
           :headers="headers"
           :items="items"
           :loading="loading"
@@ -118,6 +169,32 @@ onMounted(() => {
           density="comfortable"
           hover
         >
+          <!-- Vuetify : slot nommé item.<clé> — le point déclenche un faux positif eslint -->
+          <!-- eslint-disable-next-line vue/valid-v-slot -->
+          <template v-slot:item.actions="{ item }">
+            <div class="d-flex flex-wrap justify-end gap-1">
+              <v-btn
+                size="small"
+                variant="tonal"
+                :color="item.whitelisted ? 'warning' : 'success'"
+                :loading="pendingId === item.id && pendingAction === 'patch'"
+                :disabled="pendingId != null && pendingId !== item.id"
+                @click="toggleWhitelist(item)"
+              >
+                {{ item.whitelisted ? 'Retirer' : 'À la une' }}
+              </v-btn>
+              <v-btn
+                size="small"
+                variant="tonal"
+                color="error"
+                :loading="pendingId === item.id && pendingAction === 'delete'"
+                :disabled="pendingId != null && pendingId !== item.id"
+                @click="deleteOne(item)"
+              >
+                Supprimer
+              </v-btn>
+            </div>
+          </template>
           <template #no-data>
             <p class="text-body-2 text-medium-emphasis pa-4 mb-0">
               Aucun avis pour l’instant. Soumettez-en un depuis la page Avis.

@@ -1,15 +1,17 @@
 name: Déploiement Docker (SSH distant)
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI Production (Tests + Coverage)"]
+    types: [completed]
     branches: [production]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -35,7 +37,7 @@ jobs:
               git clone "$REPO_URL" "\$TARGET_DIR"
             else
               git -C "\$TARGET_DIR" fetch --all
-              git -C "\$TARGET_DIR" reset --hard "origin/${{ github.ref_name }}"
+              git -C "\$TARGET_DIR" reset --hard "origin/${{ github.event.workflow_run.head_branch }}"
             fi
 
             cd "\$TARGET_DIR"
