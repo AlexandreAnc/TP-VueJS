@@ -47,8 +47,34 @@ jobs:
             docker stop tp-vuejs 2>/dev/null || true
             docker rm tp-vuejs 2>/dev/null || true
 
-            docker compose -f docker-compose.prod.yml up -d --build
+            # Compose v2 : commande « docker compose » (plugin). Sur Debian vanilla le paquet
+            # docker-compose-plugin n’est que dans le dépôt Docker officiel — sinon on installe
+            # le binaire plugin dans ~/.docker/cli-plugins/ (documentation Docker).
+            COMPOSE_FILE=docker-compose.prod.yml
+            if ! docker compose version >/dev/null 2>&1; then
+              if command -v docker-compose >/dev/null 2>&1; then
+                :
+              else
+                ARCH="\$(uname -m)"
+                case "\$ARCH" in
+                  x86_64) DC_ARCH=x86_64 ;;
+                  aarch64) DC_ARCH=aarch64 ;;
+                  *)
+                    echo "Architecture Docker Compose non gérée: \$ARCH (prévoir docker compose ou docker-compose)"
+                    exit 1
+                    ;;
+                esac
+                mkdir -p "\$HOME/.docker/cli-plugins"
+                curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-\${DC_ARCH}" -o "\$HOME/.docker/cli-plugins/docker-compose"
+                chmod +x "\$HOME/.docker/cli-plugins/docker-compose"
+              fi
+            fi
 
-            # Nettoyage des anciennes images sans tag (optionnel)
+            if docker compose version >/dev/null 2>&1; then
+              docker compose -f "\$COMPOSE_FILE" up -d --build
+            else
+              docker-compose -f "\$COMPOSE_FILE" up -d --build
+            fi
+
             docker image prune -f || true
           EOF
