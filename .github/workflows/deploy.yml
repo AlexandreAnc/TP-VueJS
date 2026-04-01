@@ -1,0 +1,50 @@
+name: Déploiement Docker (SSH distant)
+
+on:
+  push:
+    branches: [main, production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+      APP_DIR: ${{ secrets.APP_DIR }}
+      REPO_URL: https://github.com/${{ github.repository }}.git
+    steps:
+      - name: Installer sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Déployer sur la machine distante
+        run: |
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" << EOF
+            set -e
+
+            TARGET_DIR="\${APP_DIR:-\$HOME/tp-vuejs}"
+
+            if [ ! -d "\$TARGET_DIR/.git" ]; then
+              rm -rf "\$TARGET_DIR"
+              git clone "$REPO_URL" "\$TARGET_DIR"
+            else
+              git -C "\$TARGET_DIR" fetch --all
+              git -C "\$TARGET_DIR" reset --hard "origin/${{ github.ref_name }}"
+            fi
+
+            cd "\$TARGET_DIR"
+
+            docker build -t tp-vuejs-prod:${{ github.sha }} -t tp-vuejs-prod:latest .
+            docker stop tp-vuejs 2>/dev/null || true
+            docker rm tp-vuejs 2>/dev/null || true
+            docker run -d \
+              --name tp-vuejs \
+              --restart unless-stopped \
+              -p 8010:80 \
+              tp-vuejs-prod:latest
+          EOF
