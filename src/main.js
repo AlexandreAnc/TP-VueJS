@@ -1,11 +1,14 @@
+import 'vuetify/styles'
 import './assets/main.css'
-
+import { createVuetify } from 'vuetify'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 
-const app = createApp(App)
+const vuetify = createVuetify({
+  theme: {
+    defaultTheme: 'light',
+  },
+})
 
-app.use(router)
-
-app.mount('#app')
+createApp(App).use(vuetify).use(router).mount('#app')

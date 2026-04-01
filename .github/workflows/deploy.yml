@@ -18,6 +18,7 @@ jobs:
       SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
       APP_DIR: ${{ secrets.APP_DIR }}
       REPO_URL: https://github.com/${{ github.repository }}.git
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     steps:
       - name: Installer sshpass
         run: sudo apt-get update && sudo apt-get install -y sshpass
@@ -39,12 +40,15 @@ jobs:
 
             cd "\$TARGET_DIR"
 
-            docker build -t tp-vuejs-prod:${{ github.sha }} -t tp-vuejs-prod:latest .
+            export POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
+            export POSTGRES_USER="\${POSTGRES_USER:-tpvuejs}"
+            export POSTGRES_DB="\${POSTGRES_DB:-tpvuejs}"
+
             docker stop tp-vuejs 2>/dev/null || true
             docker rm tp-vuejs 2>/dev/null || true
-            docker run -d \
-              --name tp-vuejs \
-              --restart unless-stopped \
-              -p 8010:80 \
-              tp-vuejs-prod:latest
+
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            # Nettoyage des anciennes images sans tag (optionnel)
+            docker image prune -f || true
           EOF

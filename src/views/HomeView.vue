@@ -1,9 +1,6 @@
-<script setup>
-import TheWelcome from '../components/TheWelcome.vue'
-</script>
-
 <template>
-  <main>
-    <TheWelcome />
-  </main>
+  <section class="page-card">
+    <h1>Accueil</h1>
+    <p>Bienvenue sur votre espace principal.</p>
+  </section>
 </template>

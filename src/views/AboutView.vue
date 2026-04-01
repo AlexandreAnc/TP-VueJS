@@ -1,15 +1,6 @@
 <template>
-  <div class="about">
-    <h1>This is an about page</h1>
-  </div>
+  <section class="page-card">
+    <h1>A propos</h1>
+    <p>Cette page presente l'application et son objectif.</p>
+  </section>
 </template>
-
-<style>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-  }
-}
-</style>
