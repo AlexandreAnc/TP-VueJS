@@ -1,0 +1,22 @@
+# Dev / préprod locale : uniquement PostgreSQL.
+# L’API et le front tournent sur ta machine avec pnpm (rechargement à chaud).
+#
+# Port hôte 5433 (et non 5432) : sur macOS, Postgres local (Homebrew / Postgres.app)
+# occupe souvent 5432 — sinon tu te connectes au mauvais serveur → role "tpvuejs" does not exist.
+
+name: tp-vuejs-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: tpvuejs
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: tpvuejs
+    volumes:
+      - tp_vuejs_pgdata_dev:/var/lib/postgresql/data
+
+volumes:
+  tp_vuejs_pgdata_dev:

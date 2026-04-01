@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "dev:db": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:db:stop": "docker compose -f docker-compose.dev.yml down",
+    "dev:db:logs": "docker compose -f docker-compose.dev.yml logs -f postgres",
+    "dev:api": "pnpm --dir api dev",
     "build": "vite build",
     "preview": "vite preview",
     "test:unit": "vitest",

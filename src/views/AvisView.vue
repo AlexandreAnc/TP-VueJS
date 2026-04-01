@@ -1,8 +1,11 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { apiUrl } from '../utils/apiBase.js'
 
 const step = ref(1)
 const submitted = ref(false)
+const submitting = ref(false)
+const submitError = ref('')
 
 const form = reactive({
   name: '',
@@ -54,9 +57,35 @@ function goTo(s) {
   step.value = s
 }
 
-function submitLocal() {
-  /** Aucun envoi réseau : démo uniquement. */
-  submitted.value = true
+async function submitAvis() {
+  submitError.value = ''
+  submitting.value = true
+  try {
+    const res = await fetch(apiUrl('/api/avis'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        rating: form.rating,
+        comment: form.comment.trim(),
+        wouldRecommend: form.wouldRecommend,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const msg =
+        Array.isArray(data.errors) && data.errors.length
+          ? data.errors.join(' · ')
+          : data.error || `Erreur ${res.status}`
+      submitError.value = msg
+      return
+    }
+    submitted.value = true
+  } catch {
+    submitError.value = 'Impossible de joindre le serveur. Vérifiez que l’API tourne (ex. pnpm dev:api).'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -76,7 +105,19 @@ function submitLocal() {
       border="start"
       prominent
     >
-      Merci pour votre retour. Aucune donnée n’a été envoyée (mode démo sans API).
+      Merci pour votre retour. Votre avis a bien été enregistré.
+    </v-alert>
+
+    <v-alert
+      v-if="submitError && !submitted"
+      type="error"
+      variant="tonal"
+      class="mb-4"
+      border="start"
+      closable
+      @click:close="submitError = ''"
+    >
+      {{ submitError }}
     </v-alert>
 
     <template v-else>
@@ -189,7 +230,15 @@ function submitLocal() {
           <v-btn v-if="step < 3" color="primary" :disabled="(step === 1 && !step1Valid) || (step === 2 && !step2Valid)" @click="next">
             Suivant
           </v-btn>
-          <v-btn v-else color="primary" @click="submitLocal">Valider l’avis</v-btn>
+          <v-btn
+            v-else
+            color="primary"
+            :loading="submitting"
+            :disabled="submitting"
+            @click="submitAvis"
+          >
+            Valider l’avis
+          </v-btn>
         </div>
       </v-form>
     </template>
