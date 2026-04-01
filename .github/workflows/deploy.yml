@@ -2,7 +2,7 @@ name: Déploiement Docker (SSH distant)
 
 on:
   push:
-    branches: [main, production]
+    branches: [production]
   workflow_dispatch:
 
 permissions:
