@@ -5,7 +5,7 @@
 # (depuis deployment/) ou depuis la racine :
 #   docker compose --env-file .env -f deployment/docker-compose.prod.yml up --build -d
 #
-# Requises : POSTGRES_PASSWORD, VITE_RECAPTCHA_SITE_KEY (build du front), RECAPTCHA_SECRET_KEY (API au runtime).
+# Requises : POSTGRES_PASSWORD. Optionnel : VITE_RECAPTCHA_SITE_KEY (défaut = clé publique projet), RECAPTCHA_SECRET_KEY (API, login admin).
 #
 # Reverse proxy Nginx (hôte) suggéré :
 #   tp-vuejs.aanc.fr      -> 127.0.0.1:8010 (web)
@@ -53,7 +53,8 @@ services:
       dockerfile: deployment/Dockerfile
       args:
         VITE_API_URL: https://api.tp-vuejs.aanc.fr
-        VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY:?Définir VITE_RECAPTCHA_SITE_KEY (clé publique, injectée au build du front)}
+        # Clé publique reCAPTCHA v3 (non secrète) : défaut pour CI / déploiement sans .env ; surcharger via l’environnement si besoin.
+        VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY:-6LckP6MsAAAAABOf5NilEJwwcrCq-LiOIQqxq_Y9}
     ports:
       - '8010:80'
     restart: unless-stopped
