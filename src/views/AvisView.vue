@@ -18,6 +18,26 @@ const FEATURED_IDS_KEY = 'tp_vuejs_featured_ids'
 const FEATURED_NOTIF_ENABLED_KEY = 'tp_vuejs_notif_enabled'
 let pollTimer = null
 
+async function setAppBadge(count = 1) {
+  if (typeof navigator === 'undefined' || typeof navigator.setAppBadge !== 'function') return
+  try {
+    await navigator.setAppBadge(Math.max(1, count))
+    console.debug('[badge] setAppBadge', count)
+  } catch (err) {
+    console.warn('[badge] impossible de définir le badge', err)
+  }
+}
+
+async function clearAppBadge() {
+  if (typeof navigator === 'undefined' || typeof navigator.clearAppBadge !== 'function') return
+  try {
+    await navigator.clearAppBadge()
+    console.debug('[badge] clearAppBadge')
+  } catch (err) {
+    console.warn('[badge] impossible de nettoyer le badge', err)
+  }
+}
+
 function formatDateShort(iso) {
   if (!iso) return ''
   try {
@@ -53,10 +73,20 @@ function writeSeenIds(items) {
 }
 
 function notifyNewFeatured(items) {
-  if (!notificationsAvailable() || Notification.permission !== 'granted') return
+  if (!notificationsAvailable()) {
+    console.warn('[notif] API Notification indisponible')
+    return
+  }
+  if (Notification.permission !== 'granted') {
+    console.warn('[notif] Permission non accordée:', Notification.permission)
+    return
+  }
   const seen = new Set(readSeenIds())
   const fresh = items.filter((it) => Number.isFinite(Number(it.id)) && !seen.has(Number(it.id)))
-  if (!fresh.length) return
+  if (!fresh.length) {
+    console.debug('[notif] Aucun nouvel avis à notifier')
+    return
+  }
 
   const newest = fresh[0]
   const body =
@@ -64,18 +94,38 @@ function notifyNewFeatured(items) {
       ? `${newest.name} a un nouvel avis mis à la une.`
       : `${fresh.length} nouveaux avis sont mis à la une.`
 
+  console.debug('[notif] Envoi notif nouveaux avis', {
+    count: fresh.length,
+    newestId: newest.id,
+  })
   new Notification('Nouveaux avis publiés', {
     body,
     tag: 'tp-vuejs-featured-avis',
   })
+  setAppBadge(fresh.length)
 }
 
 function sendNotificationTest() {
-  if (!notificationsAvailable() || Notification.permission !== 'granted') return
+  console.debug('[notif] Test manuel déclenché', {
+    apiAvailable: notificationsAvailable(),
+    permission: notificationsAvailable() ? Notification.permission : 'unavailable',
+    isSecureContext,
+    visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown',
+  })
+  if (!notificationsAvailable()) {
+    console.warn('[notif] Test annulé: API Notification indisponible')
+    return
+  }
+  if (Notification.permission !== 'granted') {
+    console.warn('[notif] Test annulé: permission =', Notification.permission)
+    return
+  }
+  console.debug('[notif] Envoi notif de test')
   new Notification('Notifications activées', {
     body: 'Vous recevrez un message quand un nouvel avis sera mis à la une.',
     tag: 'tp-vuejs-featured-avis-test',
   })
+  setAppBadge(1)
 }
 
 async function loadFeatured() {
@@ -105,10 +155,13 @@ async function loadFeatured() {
 
 async function enableNotifications() {
   if (!notificationsAvailable()) {
+    console.warn('[notif] Permission: API indisponible')
     notificationStatus.value = 'Les notifications ne sont pas supportées sur ce navigateur.'
     return
   }
+  console.debug('[notif] Demande de permission...')
   const p = await Notification.requestPermission()
+  console.debug('[notif] Résultat permission:', p)
   if (p === 'granted') {
     notificationEnabled.value = true
     notificationStatus.value = 'Notifications activées.'
@@ -127,6 +180,7 @@ onMounted(() => {
     Notification.permission === 'granted' &&
     localStorage.getItem(FEATURED_NOTIF_ENABLED_KEY) === '1'
   loadFeatured()
+  clearAppBadge()
   pollTimer = window.setInterval(() => {
     loadFeatured()
   }, 45000)
@@ -231,18 +285,25 @@ async function submitAvis() {
     <div class="featured-section">
       <div class="featured-header-row">
         <h2 class="featured-heading">Avis mis en avant</h2>
-        <v-btn
-          v-if="!notificationEnabled"
-          size="small"
-          variant="tonal"
-          color="primary"
-          @click="enableNotifications"
-        >
-          Activer les notifications
-        </v-btn>
-        <v-chip v-else size="small" color="success" variant="tonal">
-          Notifications actives
-        </v-chip>
+        <div class="notif-actions">
+          <v-btn
+            v-if="!notificationEnabled"
+            size="small"
+            variant="tonal"
+            color="primary"
+            @click="enableNotifications"
+          >
+            Activer les notifications
+          </v-btn>
+          <template v-else>
+            <v-chip size="small" color="success" variant="tonal">
+              Notifications actives
+            </v-chip>
+            <v-btn size="small" variant="outlined" color="primary" @click="sendNotificationTest">
+              Tester notification
+            </v-btn>
+          </template>
+        </div>
       </div>
       <p v-if="notificationStatus" class="notif-status text-caption text-medium-emphasis">
         {{ notificationStatus }}
@@ -625,6 +686,12 @@ async function submitAvis() {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.75rem;
+}
+
+.notif-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .notif-status {

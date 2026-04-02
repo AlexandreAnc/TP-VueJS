@@ -47,4 +47,5 @@ export async function ensureSchema() {
   await p.query(`
     ALTER TABLE avis ADD COLUMN IF NOT EXISTS whitelisted BOOLEAN NOT NULL DEFAULT FALSE;
   `)
+
 }
