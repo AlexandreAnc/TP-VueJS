@@ -1,5 +1,11 @@
 # Production : frontend (Nginx) + API Express + PostgreSQL
-# Variables requises : POSTGRES_PASSWORD (export, ou fichier .env à la racine du dépôt avec « make prod-* »)
+#
+# Variables : un fichier .env à la racine du dépôt est pris en charge si vous lancez Compose avec :
+#   docker compose --env-file ../.env -f deployment/docker-compose.prod.yml up --build -d
+# (depuis deployment/) ou depuis la racine :
+#   docker compose --env-file .env -f deployment/docker-compose.prod.yml up --build -d
+#
+# Requises : POSTGRES_PASSWORD, VITE_RECAPTCHA_SITE_KEY (build du front), RECAPTCHA_SECRET_KEY (API au runtime).
 #
 # Reverse proxy Nginx (hôte) suggéré :
 #   tp-vuejs.aanc.fr      -> 127.0.0.1:8010 (web)
@@ -33,6 +39,7 @@ services:
       PORT: 3000
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-tpvuejs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tpvuejs}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,6 +53,7 @@ services:
       dockerfile: deployment/Dockerfile
       args:
         VITE_API_URL: https://api.tp-vuejs.aanc.fr
+        VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY:?Définir VITE_RECAPTCHA_SITE_KEY (clé publique, injectée au build du front)}
     ports:
       - '8010:80'
     restart: unless-stopped
