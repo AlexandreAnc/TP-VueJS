@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { apiUrl } from '../utils/apiBase.js'
 
 const step = ref(1)
@@ -11,6 +11,13 @@ const featured = ref([])
 const featuredLoading = ref(true)
 const featuredError = ref('')
 
+const notificationEnabled = ref(false)
+const notificationStatus = ref('')
+
+const FEATURED_IDS_KEY = 'tp_vuejs_featured_ids'
+const FEATURED_NOTIF_ENABLED_KEY = 'tp_vuejs_notif_enabled'
+let pollTimer = null
+
 function formatDateShort(iso) {
   if (!iso) return ''
   try {
@@ -20,6 +27,47 @@ function formatDateShort(iso) {
   } catch {
     return ''
   }
+}
+
+function notificationsAvailable() {
+  return typeof window !== 'undefined' && typeof Notification !== 'undefined'
+}
+
+function readSeenIds() {
+  try {
+    const raw = localStorage.getItem(FEATURED_IDS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.map((v) => Number(v)).filter(Number.isFinite) : []
+  } catch {
+    return []
+  }
+}
+
+function writeSeenIds(items) {
+  try {
+    const ids = items.map((it) => Number(it.id)).filter(Number.isFinite)
+    localStorage.setItem(FEATURED_IDS_KEY, JSON.stringify(ids))
+  } catch {
+    // no-op
+  }
+}
+
+function notifyNewFeatured(items) {
+  if (!notificationsAvailable() || Notification.permission !== 'granted') return
+  const seen = new Set(readSeenIds())
+  const fresh = items.filter((it) => Number.isFinite(Number(it.id)) && !seen.has(Number(it.id)))
+  if (!fresh.length) return
+
+  const newest = fresh[0]
+  const body =
+    fresh.length === 1
+      ? `${newest.name} a un nouvel avis mis à la une.`
+      : `${fresh.length} nouveaux avis sont mis à la une.`
+
+  new Notification('Nouveaux avis publiés', {
+    body,
+    tag: 'tp-vuejs-featured-avis',
+  })
 }
 
 async function loadFeatured() {
@@ -33,7 +81,12 @@ async function loadFeatured() {
       featured.value = []
       return
     }
-    featured.value = Array.isArray(data.items) ? data.items : []
+    const items = Array.isArray(data.items) ? data.items : []
+    if (notificationEnabled.value) {
+      notifyNewFeatured(items)
+    }
+    featured.value = items
+    writeSeenIds(items)
   } catch {
     featuredError.value = 'Impossible de charger les avis mis en avant.'
     featured.value = []
@@ -42,8 +95,39 @@ async function loadFeatured() {
   }
 }
 
+async function enableNotifications() {
+  if (!notificationsAvailable()) {
+    notificationStatus.value = 'Les notifications ne sont pas supportées sur ce navigateur.'
+    return
+  }
+  const p = await Notification.requestPermission()
+  if (p === 'granted') {
+    notificationEnabled.value = true
+    notificationStatus.value = 'Notifications activées.'
+    localStorage.setItem(FEATURED_NOTIF_ENABLED_KEY, '1')
+    return
+  }
+  notificationEnabled.value = false
+  notificationStatus.value = 'Notifications refusées.'
+  localStorage.setItem(FEATURED_NOTIF_ENABLED_KEY, '0')
+}
+
 onMounted(() => {
+  notificationEnabled.value =
+    notificationsAvailable() &&
+    Notification.permission === 'granted' &&
+    localStorage.getItem(FEATURED_NOTIF_ENABLED_KEY) === '1'
   loadFeatured()
+  pollTimer = window.setInterval(() => {
+    loadFeatured()
+  }, 45000)
+})
+
+onBeforeUnmount(() => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
 })
 
 const form = reactive({
@@ -136,7 +220,24 @@ async function submitAvis() {
     </p>
 
     <div class="featured-section">
-      <h2 class="featured-heading">Avis mis en avant</h2>
+      <div class="featured-header-row">
+        <h2 class="featured-heading">Avis mis en avant</h2>
+        <v-btn
+          v-if="!notificationEnabled"
+          size="small"
+          variant="tonal"
+          color="primary"
+          @click="enableNotifications"
+        >
+          Activer les notifications
+        </v-btn>
+        <v-chip v-else size="small" color="success" variant="tonal">
+          Notifications actives
+        </v-chip>
+      </div>
+      <p v-if="notificationStatus" class="notif-status text-caption text-medium-emphasis">
+        {{ notificationStatus }}
+      </p>
       <v-progress-linear v-if="featuredLoading" indeterminate color="primary" class="mb-4" />
       <v-alert
         v-else-if="featuredError"
@@ -503,10 +604,22 @@ async function submitAvis() {
 }
 
 .featured-heading {
-  margin: 0 0 1rem;
+  margin: 0;
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--color-800);
+}
+
+.featured-header-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.notif-status {
+  margin: 0 0 0.75rem;
 }
 
 .featured-empty {
