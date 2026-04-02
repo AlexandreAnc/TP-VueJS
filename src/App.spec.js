@@ -1,19 +1,63 @@
 import { mount, flushPromises } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
-import App from './App.vue'
 import { buildRouter } from './router/buildRouter.js'
 import { createTestVuetify } from './test/vuetify.js'
 
+const { startFeaturedPollingMock } = vi.hoisted(() => ({
+  startFeaturedPollingMock: vi.fn(),
+}))
+
+vi.mock('./composables/useFeaturedFeed.js', () => ({
+  startFeaturedPolling: startFeaturedPollingMock,
+}))
+
 describe('App.vue', () => {
-  it('affiche la barre de navigation et le pied de page', async () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  async function mountApp() {
+    const { default: App } = await import('./App.vue')
     const router = buildRouter(createMemoryHistory())
     await router.push('/')
     const wrapper = mount(App, {
       global: { plugins: [createTestVuetify(), router] },
     })
     await flushPromises()
+    return wrapper
+  }
+
+  it('affiche la barre de navigation et le pied de page', async () => {
+    const wrapper = await mountApp()
     expect(wrapper.find('header.navbar').exists()).toBe(true)
     expect(wrapper.find('footer.app-footer').exists()).toBe(true)
+    expect(startFeaturedPollingMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('demande la permission Notification quand elle est à default', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('granted')
+    const NotificationMock = vi.fn()
+    NotificationMock.permission = 'default'
+    NotificationMock.requestPermission = requestPermission
+    vi.stubGlobal('Notification', NotificationMock)
+
+    await mountApp()
+
+    expect(requestPermission).toHaveBeenCalledTimes(1)
+  })
+
+  it('n’essaie pas de redemander la permission si déjà décidée', async () => {
+    const requestPermission = vi.fn().mockResolvedValue('denied')
+    const NotificationMock = vi.fn()
+    NotificationMock.permission = 'denied'
+    NotificationMock.requestPermission = requestPermission
+    vi.stubGlobal('Notification', NotificationMock)
+
+    await mountApp()
+
+    expect(requestPermission).not.toHaveBeenCalled()
   })
 })
