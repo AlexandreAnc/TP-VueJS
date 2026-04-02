@@ -1,191 +1,128 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 
-const STORAGE_KEY = 'tp_vuejs_contacts'
-
-const contacts = ref([])
 const loading = ref(false)
-const pickerStatus = ref('')
-const formError = ref('')
-const editingId = ref(null)
-
-const form = reactive({
-  name: '',
-  email: '',
-  tel: '',
-})
-
-const supportsContactPicker = computed(() => {
-  return typeof navigator !== 'undefined' && 'contacts' in navigator
-})
+const errorMessage = ref('')
+const address = ref('')
+const latitude = ref(null)
+const longitude = ref(null)
 
 const isSecure = computed(() => {
   return typeof window !== 'undefined' && window.isSecureContext === true
 })
 
-const canImport = computed(() => supportsContactPicker.value && isSecure.value)
-const importDisabledReason = computed(() => {
-  if (!isSecure.value) return 'Import indisponible hors HTTPS.'
-  if (!supportsContactPicker.value) return 'Contact Picker API non supportée sur ce navigateur.'
-  return ''
+const geolocationSupported = computed(() => {
+  return typeof navigator !== 'undefined' && 'geolocation' in navigator
 })
 
-function resetForm() {
-  form.name = ''
-  form.email = ''
-  form.tel = ''
-  formError.value = ''
-  editingId.value = null
-}
+const canLocate = computed(() => isSecure.value && geolocationSupported.value)
 
-function loadSavedContacts() {
+const mapEmbedUrl = computed(() => {
+  if (latitude.value == null || longitude.value == null) return ''
+  return `https://www.openstreetmap.org/export/embed.html?layer=mapnik&marker=${latitude.value},${longitude.value}`
+})
+
+const mapOpenUrl = computed(() => {
+  if (latitude.value == null || longitude.value == null) return ''
+  return `https://www.openstreetmap.org/?mlat=${latitude.value}&mlon=${longitude.value}#map=16/${latitude.value}/${longitude.value}`
+})
+
+async function reverseGeocode(lat, lon) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    contacts.value = Array.isArray(parsed) ? parsed : []
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+      {
+        headers: {
+          Accept: 'application/json',
+        },
+      },
+    )
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      address.value = ''
+      return
+    }
+    address.value = data.display_name || ''
   } catch {
-    contacts.value = []
+    address.value = ''
   }
 }
 
-function saveContacts() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts.value))
-}
-
-function createContactFromPicker(item) {
-  const name = Array.isArray(item.name) ? item.name[0] || '' : ''
-  const email = Array.isArray(item.email) ? item.email[0] || '' : ''
-  const tel = Array.isArray(item.tel) ? item.tel[0] || '' : ''
-  return {
-    id: crypto.randomUUID(),
-    name: String(name).trim(),
-    email: String(email).trim(),
-    tel: String(tel).trim(),
-  }
-}
-
-async function importContacts() {
-  pickerStatus.value = ''
-  if (!canImport.value) {
-    pickerStatus.value = importDisabledReason.value
+function getCurrentPosition() {
+  errorMessage.value = ''
+  address.value = ''
+  if (!canLocate.value) {
+    errorMessage.value = !isSecure.value
+      ? 'La géolocalisation nécessite un contexte sécurisé (HTTPS).'
+      : 'La géolocalisation n’est pas supportée par ce navigateur.'
     return
   }
 
   loading.value = true
-  try {
-    const supportedProperties = await navigator.contacts.getProperties()
-    const properties = ['name', 'email', 'tel'].filter((prop) => supportedProperties.includes(prop))
-    if (!properties.length) {
-      pickerStatus.value = 'Aucune propriété compatible (name/email/tel).'
-      return
-    }
-
-    const selected = await navigator.contacts.select(properties, { multiple: true })
-    if (!selected.length) {
-      pickerStatus.value = 'Aucun contact sélectionné.'
-      return
-    }
-
-    const imported = selected.map(createContactFromPicker).filter((c) => c.name || c.email || c.tel)
-    if (!imported.length) {
-      pickerStatus.value = 'Les contacts sélectionnés ne contiennent pas de données exploitables.'
-      return
-    }
-
-    contacts.value = [...imported, ...contacts.value]
-    saveContacts()
-    pickerStatus.value = `${imported.length} contact(s) importé(s).`
-  } catch {
-    pickerStatus.value = 'Import annulé ou impossible.'
-  } finally {
-    loading.value = false
-  }
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      latitude.value = Number(position.coords.latitude.toFixed(6))
+      longitude.value = Number(position.coords.longitude.toFixed(6))
+      await reverseGeocode(latitude.value, longitude.value)
+      loading.value = false
+    },
+    (err) => {
+      if (err.code === 1) {
+        errorMessage.value = 'Permission refusée pour la géolocalisation.'
+      } else if (err.code === 2) {
+        errorMessage.value = 'Position indisponible.'
+      } else if (err.code === 3) {
+        errorMessage.value = 'Délai dépassé lors de la géolocalisation.'
+      } else {
+        errorMessage.value = 'Impossible de récupérer votre position.'
+      }
+      loading.value = false
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 0,
+    },
+  )
 }
-
-function startEdit(contact) {
-  editingId.value = contact.id
-  form.name = contact.name || ''
-  form.email = contact.email || ''
-  form.tel = contact.tel || ''
-  formError.value = ''
-}
-
-function removeContact(id) {
-  contacts.value = contacts.value.filter((c) => c.id !== id)
-  saveContacts()
-  if (editingId.value === id) {
-    resetForm()
-  }
-}
-
-function submitForm() {
-  formError.value = ''
-  const next = {
-    name: form.name.trim(),
-    email: form.email.trim(),
-    tel: form.tel.trim(),
-  }
-
-  if (!next.name && !next.email && !next.tel) {
-    formError.value = 'Renseignez au moins un champ.'
-    return
-  }
-
-  if (editingId.value) {
-    contacts.value = contacts.value.map((c) => (c.id === editingId.value ? { ...c, ...next } : c))
-  } else {
-    contacts.value.unshift({ id: crypto.randomUUID(), ...next })
-  }
-  saveContacts()
-  resetForm()
-}
-
-onMounted(() => {
-  loadSavedContacts()
-})
 </script>
 
 <template>
   <section class="page-card">
-    <h1>Vos Contacts</h1>
-    <p>Importez vos contacts (Contact Picker API), puis modifiez/supprimez-les. Les données sont sauvegardées localement.</p>
+    <h1>Votre Géolocalisation</h1>
+    <p>Cliquez pour récupérer votre position et l’afficher sur OpenStreetMap.</p>
 
     <div class="actions">
-      <v-btn color="primary" :loading="loading" :disabled="!canImport" @click="importContacts">
-        Importer depuis le téléphone
+      <v-btn color="primary" :loading="loading" @click="getCurrentPosition">
+        Localiser ma position
       </v-btn>
-      <span v-if="importDisabledReason" class="hint">{{ importDisabledReason }}</span>
-      <span v-else-if="pickerStatus" class="hint">{{ pickerStatus }}</span>
+      <span v-if="!canLocate" class="hint">
+        {{ !isSecure ? 'Fonction disponible uniquement en HTTPS.' : 'Géolocalisation non supportée.' }}
+      </span>
     </div>
 
-    <v-card class="mt-4" variant="outlined">
-      <v-card-title>{{ editingId ? 'Modifier le contact' : 'Ajouter un contact manuellement' }}</v-card-title>
-      <v-card-text class="form-grid">
-        <v-text-field v-model="form.name" label="Nom" variant="outlined" density="comfortable" hide-details="auto" />
-        <v-text-field v-model="form.email" label="Email" type="email" variant="outlined" density="comfortable" hide-details="auto" />
-        <v-text-field v-model="form.tel" label="Téléphone" variant="outlined" density="comfortable" hide-details="auto" />
-        <v-alert v-if="formError" type="warning" variant="tonal" density="compact">{{ formError }}</v-alert>
+    <v-alert v-if="errorMessage" type="warning" variant="tonal" class="mt-4">
+      {{ errorMessage }}
+    </v-alert>
+
+    <v-card v-if="latitude !== null && longitude !== null" class="mt-4" variant="outlined">
+      <v-card-title>Position actuelle</v-card-title>
+      <v-card-text>
+        <p><strong>Latitude :</strong> {{ latitude }}</p>
+        <p><strong>Longitude :</strong> {{ longitude }}</p>
+        <p v-if="address"><strong>Adresse approximative :</strong> {{ address }}</p>
+        <iframe
+          class="osm-map"
+          :src="mapEmbedUrl"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Carte OpenStreetMap"
+        />
+        <a :href="mapOpenUrl" target="_blank" rel="noopener noreferrer">
+          Ouvrir dans OpenStreetMap
+        </a>
       </v-card-text>
-      <v-card-actions>
-        <v-btn color="primary" @click="submitForm">{{ editingId ? 'Enregistrer' : 'Ajouter' }}</v-btn>
-        <v-btn v-if="editingId" variant="text" @click="resetForm">Annuler</v-btn>
-      </v-card-actions>
     </v-card>
-
-    <div class="mt-6">
-      <h2>Liste des contacts</h2>
-      <p v-if="!contacts.length" class="hint">Aucun contact pour le moment.</p>
-      <v-list v-else lines="two" border rounded="lg">
-        <v-list-item v-for="c in contacts" :key="c.id">
-          <v-list-item-title>{{ c.name || 'Sans nom' }}</v-list-item-title>
-          <v-list-item-subtitle>{{ c.email || '—' }} · {{ c.tel || '—' }}</v-list-item-subtitle>
-          <template #append>
-            <v-btn size="small" variant="text" @click="startEdit(c)">Modifier</v-btn>
-            <v-btn size="small" color="error" variant="text" @click="removeContact(c.id)">Supprimer</v-btn>
-          </template>
-        </v-list-item>
-      </v-list>
-    </div>
   </section>
 </template>
 
@@ -202,8 +139,11 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
-.form-grid {
-  display: grid;
-  gap: 0.75rem;
+.osm-map {
+  width: 100%;
+  min-height: 320px;
+  border: 1px solid var(--color-200);
+  border-radius: 12px;
+  margin: 0.75rem 0;
 }
 </style>

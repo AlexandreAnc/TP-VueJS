@@ -8,7 +8,7 @@ const { isLoggedIn, logout } = useAuth()
 
 const links = [
   { to: '/', label: 'Accueil' },
-  { to: '/projets', label: 'Vos Contacts' },
+  { to: '/projets', label: 'Géolocalisation' },
   { to: '/a-propos', label: 'A propos' },
   { to: '/avis', label: 'Avis' },
   { to: '/contact', label: 'Contact' },

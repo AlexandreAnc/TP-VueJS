@@ -8,6 +8,6 @@ describe('ProjectsView.vue', () => {
     const wrapper = mount(ProjectsView, {
       global: { plugins: [createTestVuetify()] },
     })
-    expect(wrapper.find('h1').text()).toContain('Vos Contacts')
+    expect(wrapper.find('h1').text()).toContain('Votre Géolocalisation')
   })
 })
