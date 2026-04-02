@@ -2,8 +2,13 @@ import { fileURLToPath } from 'node:url'
 import { mergeConfig, defineConfig, configDefaults } from 'vitest/config'
 import viteConfig from './vite.config.js'
 
+const resolvedVite =
+  typeof viteConfig === 'function'
+    ? viteConfig({ command: 'serve', mode: 'test' })
+    : viteConfig
+
 export default mergeConfig(
-  viteConfig,
+  resolvedVite,
   defineConfig({
     ssr: {
       noExternal: ['vuetify', 'vite-plugin-vuetify'],

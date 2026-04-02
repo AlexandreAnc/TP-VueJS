@@ -23,6 +23,7 @@ pnpm-debug.log*
 
 .DS_Store
 .gitignore
+# Jamais copiés dans l’image : le build ne lit pas ces fichiers. Passer VITE_* en build-arg (docker-compose --env-file).
 .env
 .env.*
 !.env.example
