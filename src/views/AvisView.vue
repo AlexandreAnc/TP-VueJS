@@ -1,42 +1,23 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { apiUrl } from '../utils/apiBase.js'
+import {
+  acknowledgeFeaturedSeen,
+  featured,
+  featuredLoading,
+  featuredError,
+  setAppBadge,
+} from '../composables/useFeaturedFeed.js'
 
 const step = ref(1)
 const submitted = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
 
-const featured = ref([])
-const featuredLoading = ref(true)
-const featuredError = ref('')
-
 const notificationEnabled = ref(false)
 const notificationStatus = ref('')
 
-const FEATURED_IDS_KEY = 'tp_vuejs_featured_ids'
 const FEATURED_NOTIF_ENABLED_KEY = 'tp_vuejs_notif_enabled'
-let pollTimer = null
-
-async function setAppBadge(count = 1) {
-  if (typeof navigator === 'undefined' || typeof navigator.setAppBadge !== 'function') return
-  try {
-    await navigator.setAppBadge(Math.max(1, count))
-    console.debug('[badge] setAppBadge', count)
-  } catch (err) {
-    console.warn('[badge] impossible de définir le badge', err)
-  }
-}
-
-async function clearAppBadge() {
-  if (typeof navigator === 'undefined' || typeof navigator.clearAppBadge !== 'function') return
-  try {
-    await navigator.clearAppBadge()
-    console.debug('[badge] clearAppBadge')
-  } catch (err) {
-    console.warn('[badge] impossible de nettoyer le badge', err)
-  }
-}
 
 function formatDateShort(iso) {
   if (!iso) return ''
@@ -53,74 +34,13 @@ function notificationsAvailable() {
   return typeof window !== 'undefined' && typeof Notification !== 'undefined'
 }
 
-function readSeenIds() {
-  try {
-    const raw = localStorage.getItem(FEATURED_IDS_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed.map((v) => Number(v)).filter(Number.isFinite) : []
-  } catch {
-    return []
-  }
-}
-
-function writeSeenIds(items) {
-  try {
-    const ids = items.map((it) => Number(it.id)).filter(Number.isFinite)
-    localStorage.setItem(FEATURED_IDS_KEY, JSON.stringify(ids))
-  } catch {
-    // no-op
-  }
-}
-
-function notifyNewFeatured(items) {
-  if (!notificationsAvailable()) {
-    console.warn('[notif] API Notification indisponible')
-    return
-  }
-  if (Notification.permission !== 'granted') {
-    console.warn('[notif] Permission non accordée:', Notification.permission)
-    return
-  }
-  const seen = new Set(readSeenIds())
-  const fresh = items.filter((it) => Number.isFinite(Number(it.id)) && !seen.has(Number(it.id)))
-  if (!fresh.length) {
-    console.debug('[notif] Aucun nouvel avis à notifier')
-    return
-  }
-
-  const newest = fresh[0]
-  const body =
-    fresh.length === 1
-      ? `${newest.name} a un nouvel avis mis à la une.`
-      : `${fresh.length} nouveaux avis sont mis à la une.`
-
-  console.debug('[notif] Envoi notif nouveaux avis', {
-    count: fresh.length,
-    newestId: newest.id,
-  })
-  new Notification('Nouveaux avis publiés', {
-    body,
-    tag: 'tp-vuejs-featured-avis',
-  })
-  setAppBadge(fresh.length)
-}
-
 function sendNotificationTest() {
-  console.debug('[notif] Test manuel déclenché', {
-    apiAvailable: notificationsAvailable(),
-    permission: notificationsAvailable() ? Notification.permission : 'unavailable',
-    isSecureContext,
-    visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown',
-  })
   if (!notificationsAvailable()) {
-    console.warn('[notif] Test annulé: API Notification indisponible')
     return
   }
   if (Notification.permission !== 'granted') {
-    console.warn('[notif] Test annulé: permission =', Notification.permission)
     return
   }
-  console.debug('[notif] Envoi notif de test')
   new Notification('Notifications activées', {
     body: 'Vous recevrez un message quand un nouvel avis sera mis à la une.',
     tag: 'tp-vuejs-featured-avis-test',
@@ -128,40 +48,12 @@ function sendNotificationTest() {
   setAppBadge(1)
 }
 
-async function loadFeatured() {
-  featuredLoading.value = true
-  featuredError.value = ''
-  try {
-    const res = await fetch(apiUrl('/api/avis/public?limit=24'))
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      featuredError.value = data.error || 'Impossible de charger les avis mis en avant.'
-      featured.value = []
-      return
-    }
-    const items = Array.isArray(data.items) ? data.items : []
-    if (notificationEnabled.value) {
-      notifyNewFeatured(items)
-    }
-    featured.value = items
-    writeSeenIds(items)
-  } catch {
-    featuredError.value = 'Impossible de charger les avis mis en avant.'
-    featured.value = []
-  } finally {
-    featuredLoading.value = false
-  }
-}
-
 async function enableNotifications() {
   if (!notificationsAvailable()) {
-    console.warn('[notif] Permission: API indisponible')
     notificationStatus.value = 'Les notifications ne sont pas supportées sur ce navigateur.'
     return
   }
-  console.debug('[notif] Demande de permission...')
   const p = await Notification.requestPermission()
-  console.debug('[notif] Résultat permission:', p)
   if (p === 'granted') {
     notificationEnabled.value = true
     notificationStatus.value = 'Notifications activées.'
@@ -174,23 +66,12 @@ async function enableNotifications() {
   localStorage.setItem(FEATURED_NOTIF_ENABLED_KEY, '0')
 }
 
-onMounted(() => {
+onMounted(async () => {
   notificationEnabled.value =
     notificationsAvailable() &&
     Notification.permission === 'granted' &&
     localStorage.getItem(FEATURED_NOTIF_ENABLED_KEY) === '1'
-  loadFeatured()
-  clearAppBadge()
-  pollTimer = window.setInterval(() => {
-    loadFeatured()
-  }, 45000)
-})
-
-onBeforeUnmount(() => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
-  }
+  await acknowledgeFeaturedSeen()
 })
 
 const form = reactive({

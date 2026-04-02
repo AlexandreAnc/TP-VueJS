@@ -2,8 +2,10 @@
 import { onMounted } from 'vue'
 import NavBar from './components/NavBar.vue'
 import AppFooter from './components/AppFooter.vue'
+import { startFeaturedPolling } from './composables/useFeaturedFeed.js'
 
 onMounted(async () => {
+  startFeaturedPolling()
   if (typeof window === 'undefined' || typeof Notification === 'undefined') return
   if (Notification.permission !== 'default') return
   try {
