@@ -1,7 +1,7 @@
 # Administration Docker / déploiement local.
 # Exécuter depuis la racine du dépôt : make <cible>
 
-.PHONY: help dev-db-up dev-db-down dev-db-logs prod-up prod-down prod-build prod-logs prod-ps
+.PHONY: help dev-db-up dev-db-down dev-db-logs prod-up prod-down prod-build prod-logs prod-ps prod-prune-disk
 
 DEPLOY := deployment
 COMPOSE := docker compose
@@ -16,6 +16,7 @@ help:
 	@echo "  make prod-build    — rebuild des images prod"
 	@echo "  make prod-logs     — suit les logs de tous les services prod"
 	@echo "  make prod-ps       — état des conteneurs prod"
+	@echo "  make prod-prune-disk — libère cache BuildKit + images inutilisées (à lancer sur le VPS si disque plein)"
 
 dev-db-up:
 	$(COMPOSE) -f $(DEPLOY)/docker-compose.dev.yml up -d
@@ -40,3 +41,9 @@ prod-logs:
 
 prod-ps:
 	$(COMPOSE) -f $(DEPLOY)/docker-compose.prod.yml ps
+
+# À exécuter sur la machine où tourne Docker (ex. VPS), depuis la racine du dépôt, stack arrêté si besoin.
+prod-prune-disk:
+	docker builder prune -af
+	docker image prune -af
+	docker system df

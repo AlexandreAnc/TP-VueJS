@@ -1,11 +1,37 @@
+# Contexte = racine du dépôt (image web). Exclure tout ce qui alourdit inutilement le build.
+
 node_modules
 dist
+coverage
 api
+
 .git
-.gitignore
+.github
+.cursor
+.idea
 .vscode
-.DS_Store
+
+# Stores / caches locaux éventuels
+.pnpm-store
+**/.pnpm-store
+
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+.DS_Store
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Fichiers de déploiement : non nécessaires dans l’image (le Dockerfile est lu à part)
+deployment
+
+# Tests & doc
+**/*.spec.js
+**/*.test.js
+**/vitest.config.js
+e2e
