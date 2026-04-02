@@ -1,11 +1,13 @@
 # Production : frontend (Nginx) + API Express + PostgreSQL
 #
-# Variables : un fichier .env à la racine du dépôt est pris en charge si vous lancez Compose avec :
-#   docker compose --env-file ../.env -f deployment/docker-compose.prod.yml up --build -d
-# (depuis deployment/) ou depuis la racine :
-#   docker compose --env-file .env -f deployment/docker-compose.prod.yml up --build -d
+# Fichier .env : avec seulement « -f deployment/docker-compose.prod.yml », le répertoire projet
+# par défaut est deployment/ → Compose charge deployment/.env, pas la racine du dépôt.
+# Pour utiliser le .env à la racine (recommandé) :
+#   docker compose --project-directory . -f deployment/docker-compose.prod.yml up --build -d
+# (lancer depuis la racine du clone ; « . » = racine). Alternative : --env-file ./.env
 #
-# Requises : POSTGRES_PASSWORD. Optionnel : VITE_RECAPTCHA_SITE_KEY (défaut = clé publique projet), RECAPTCHA_SECRET_KEY (API, login admin).
+# Requises : POSTGRES_PASSWORD. Optionnel : VITE_RECAPTCHA_SITE_KEY (défaut dans ce fichier si vide),
+# RECAPTCHA_SECRET_KEY (API, login admin).
 #
 # Reverse proxy Nginx (hôte) suggéré :
 #   tp-vuejs.aanc.fr      -> 127.0.0.1:8010 (web)
