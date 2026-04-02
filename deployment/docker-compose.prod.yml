@@ -1,10 +1,8 @@
 # Production : frontend (Nginx) + API Express + PostgreSQL
 #
-# Fichier .env : avec seulement « -f deployment/docker-compose.prod.yml », le répertoire projet
-# par défaut est deployment/ → Compose charge deployment/.env, pas la racine du dépôt.
-# Pour utiliser le .env à la racine (recommandé) :
-#   docker compose --project-directory . -f deployment/docker-compose.prod.yml up --build -d
-# (lancer depuis la racine du clone ; « . » = racine). Alternative : --env-file ./.env
+# Fichier .env : le répertoire projet par défaut est deployment/ → Compose charge deployment/.env.
+# Pour la racine du clone, utiliser --env-file (et PAS --project-directory sur la racine, sinon context: .. casse) :
+#   docker compose --env-file ./.env -f deployment/docker-compose.prod.yml up --build -d
 #
 # Requises : POSTGRES_PASSWORD. Optionnel : VITE_RECAPTCHA_SITE_KEY (défaut dans ce fichier si vide),
 # RECAPTCHA_SECRET_KEY (API, login admin).

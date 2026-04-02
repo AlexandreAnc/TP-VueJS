@@ -53,8 +53,14 @@ jobs:
             # docker-compose-plugin n’est que dans le dépôt Docker officiel — sinon on installe
             # le binaire plugin dans ~/.docker/cli-plugins/ (documentation Docker).
             COMPOSE_FILE=deployment/docker-compose.prod.yml
-            # Sans ça, le « project directory » est deployment/ : Compose lit deployment/.env, pas la racine.
-            COMPOSE_PROJECT_ARGS=(--project-directory "\$TARGET_DIR" -f "\$COMPOSE_FILE")
+            # Ne pas utiliser --project-directory sur la racine : Compose résout alors context: .. depuis la racine
+            # (chemins cassés → « lstat .../deployment: no such file »). --env-file charge le .env racine pour l’interpolation.
+            if [ -f ./.env ]; then
+              COMPOSE_ENV=(--env-file ./.env)
+            else
+              COMPOSE_ENV=()
+            fi
+            COMPOSE_ARGS=("\${COMPOSE_ENV[@]}" -f "\$COMPOSE_FILE")
             if ! docker compose version >/dev/null 2>&1; then
               if command -v docker-compose >/dev/null 2>&1; then
                 :
@@ -75,19 +81,19 @@ jobs:
             fi
 
             if docker compose version >/dev/null 2>&1; then
-              docker compose "\${COMPOSE_PROJECT_ARGS[@]}" down --remove-orphans || true
+              docker compose "\${COMPOSE_ARGS[@]}" down --remove-orphans || true
             else
-              docker-compose --project-directory "\$TARGET_DIR" -f "\$COMPOSE_FILE" down --remove-orphans || true
+              docker-compose "\${COMPOSE_ENV[@]}" -f "\$COMPOSE_FILE" down --remove-orphans || true
             fi
 
-            # Libère de la place avant rebuild (souvent la cause de « no space left on device » sur petit VPS)
-            docker builder prune -af || true
-            docker image prune -af || true
+            # Pas de « prune -af » ici : ça supprime tout le cache build + les images non utilisées → re-télécharge
+            # postgres à chaque push. En cas de disque plein, lancer une fois à la main sur le VPS :
+            #   docker builder prune -af && docker image prune -af
 
             if docker compose version >/dev/null 2>&1; then
-              docker compose "\${COMPOSE_PROJECT_ARGS[@]}" up -d --build
+              docker compose "\${COMPOSE_ARGS[@]}" up -d --build
             else
-              docker-compose --project-directory "\$TARGET_DIR" -f "\$COMPOSE_FILE" up -d --build
+              docker-compose "\${COMPOSE_ENV[@]}" -f "\$COMPOSE_FILE" up -d --build
             fi
 
             docker image prune -f || true
