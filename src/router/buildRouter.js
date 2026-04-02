@@ -2,7 +2,6 @@ import { nextTick } from 'vue'
 import { createRouter } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ProjectsView from '../views/ProjectsView.vue'
-import AboutView from '../views/AboutView.vue'
 import ContactView from '../views/ContactView.vue'
 import AvisView from '../views/AvisView.vue'
 import BackOfficeView from '../views/BackOfficeView.vue'
@@ -18,7 +17,7 @@ export function buildRouter(history) {
     routes: [
       { path: '/', name: 'home', component: HomeView },
       { path: '/projets', name: 'projects', component: ProjectsView },
-      { path: '/a-propos', name: 'about', component: AboutView },
+      { path: '/a-propos', redirect: '/' },
       { path: '/contact', name: 'contact', component: ContactView },
       { path: '/avis', name: 'avis', component: AvisView },
       { path: '/login', name: 'login', component: LoginView },

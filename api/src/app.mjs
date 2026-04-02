@@ -1,6 +1,7 @@
 import cors from 'cors'
 import express from 'express'
 import { parseAvisId, validateAvisPayload } from './avisValidation.mjs'
+import { verifyRecaptchaV3 } from './recaptcha.mjs'
 
 /**
  * @param {() => import('@prisma/client').PrismaClient} getPrisma
@@ -181,6 +182,46 @@ export function createApp(getPrisma) {
         error: err instanceof Error ? err.message : 'erreur serveur',
       })
     }
+  })
+
+  const adminUser = process.env.ADMIN_USERNAME ?? 'admin'
+  const adminPass = process.env.ADMIN_PASSWORD ?? 'admin'
+
+  app.post('/api/auth/login', async (req, res) => {
+    const { username, password, recaptchaToken } = req.body ?? {}
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ ok: false, error: 'requis' })
+    }
+    const ip =
+      req.ip ||
+      (typeof req.headers['x-forwarded-for'] === 'string'
+        ? req.headers['x-forwarded-for'].split(',')[0]?.trim()
+        : undefined)
+
+    const captcha = await verifyRecaptchaV3(
+      typeof recaptchaToken === 'string' ? recaptchaToken : '',
+      ip,
+    )
+    if (!captcha.ok) {
+      const status =
+        captcha.error === 'recaptcha_secret_manquant' ? 503 : 403
+      const userFacing =
+        captcha.error === 'recaptcha_secret_manquant'
+          ? 'Connexion temporairement indisponible (configuration serveur).'
+          : captcha.error === 'recaptcha_score_trop_bas'
+            ? 'Tentative refusée (sécurité). Réessayez plus tard.'
+            : 'Vérification de sécurité impossible. Rechargez la page et réessayez.'
+      return res.status(status).json({ ok: false, error: userFacing })
+    }
+
+    if (username !== adminUser || password !== adminPass) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Identifiant ou mot de passe incorrect.',
+      })
+    }
+
+    res.json({ ok: true })
   })
 
   app.use((_req, res) => {

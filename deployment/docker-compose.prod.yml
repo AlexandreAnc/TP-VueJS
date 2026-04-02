@@ -1,5 +1,5 @@
 # Production : frontend (Nginx) + API Express + PostgreSQL
-# Variables requises sur la machine / CI : POSTGRES_PASSWORD
+# Variables requises : POSTGRES_PASSWORD (export, ou fichier .env à la racine du dépôt avec « make prod-* »)
 #
 # Reverse proxy Nginx (hôte) suggéré :
 #   tp-vuejs.aanc.fr      -> 127.0.0.1:8010 (web)

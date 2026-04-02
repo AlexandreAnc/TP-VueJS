@@ -8,13 +8,20 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+
+# Cache pnpm si store-dir pointe dans le dépôt (optionnel, non versionné)
+.pnpm-store/
+
 .DS_Store
 dist
 dist-ssr
 coverage
 *.local
 
-# Editor directories and files
+# Secrets machine / prod (ex. VPS). Les modèles restent .env.development, etc.
+.env
+
+# Editor : réglages locaux (optionnel de recommander des extensions via extensions.json)
 .vscode/*
 !.vscode/extensions.json
 .idea

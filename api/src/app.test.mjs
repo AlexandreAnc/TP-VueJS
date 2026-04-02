@@ -1,5 +1,5 @@
 import request from 'supertest'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from './app.mjs'
 
 function makePrisma() {
@@ -268,5 +268,73 @@ describe('createApp', () => {
     const res = await request(app).get('/nope')
     expect(res.status).toBe(404)
     expect(res.body.error).toBe('not_found')
+  })
+})
+
+describe('POST /api/auth/login', () => {
+  const saved = {
+    skip: process.env.RECAPTCHA_SKIP_VERIFY,
+    secret: process.env.RECAPTCHA_SECRET_KEY,
+    user: process.env.ADMIN_USERNAME,
+    pass: process.env.ADMIN_PASSWORD,
+  }
+
+  afterEach(() => {
+    if (saved.skip === undefined) {
+      delete process.env.RECAPTCHA_SKIP_VERIFY
+    } else {
+      process.env.RECAPTCHA_SKIP_VERIFY = saved.skip
+    }
+    if (saved.secret === undefined) {
+      delete process.env.RECAPTCHA_SECRET_KEY
+    } else {
+      process.env.RECAPTCHA_SECRET_KEY = saved.secret
+    }
+    if (saved.user === undefined) {
+      delete process.env.ADMIN_USERNAME
+    } else {
+      process.env.ADMIN_USERNAME = saved.user
+    }
+    if (saved.pass === undefined) {
+      delete process.env.ADMIN_PASSWORD
+    } else {
+      process.env.ADMIN_PASSWORD = saved.pass
+    }
+  })
+
+  it('400 si corps invalide', async () => {
+    process.env.RECAPTCHA_SKIP_VERIFY = '1'
+    const app = createApp(() => makePrisma())
+    const res = await request(app).post('/api/auth/login').send({})
+    expect(res.status).toBe(400)
+  })
+
+  it('401 si mauvais mot de passe', async () => {
+    process.env.RECAPTCHA_SKIP_VERIFY = '1'
+    const app = createApp(() => makePrisma())
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'admin', password: 'non', recaptchaToken: 'x' })
+    expect(res.status).toBe(401)
+  })
+
+  it('200 si admin / admin et jeton présent (skip reCAPTCHA)', async () => {
+    process.env.RECAPTCHA_SKIP_VERIFY = '1'
+    const app = createApp(() => makePrisma())
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'admin', password: 'admin', recaptchaToken: 'x' })
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
+  })
+
+  it('503 si clé secrète absente et pas de skip', async () => {
+    delete process.env.RECAPTCHA_SKIP_VERIFY
+    delete process.env.RECAPTCHA_SECRET_KEY
+    const app = createApp(() => makePrisma())
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'admin', password: 'admin', recaptchaToken: 'x' })
+    expect(res.status).toBe(503)
   })
 })

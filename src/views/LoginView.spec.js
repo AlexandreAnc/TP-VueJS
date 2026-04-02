@@ -1,5 +1,5 @@
 import { mount, flushPromises } from '@vue/test-utils'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
 import LoginView from './LoginView.vue'
 import { buildRouter } from '../router/buildRouter.js'
@@ -10,9 +10,23 @@ describe('LoginView.vue', () => {
   beforeEach(() => {
     localStorage.clear()
     useAuth().logout()
+    vi.stubGlobal('grecaptcha', {
+      ready: (cb) => {
+        cb?.()
+      },
+      execute: vi.fn().mockResolvedValue('test-recaptcha-token'),
+    })
+    globalThis.fetch = vi.fn()
   })
 
   it('affiche une erreur si identifiants invalides', async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: false,
+      json: () =>
+        Promise.resolve({
+          error: 'Identifiant ou mot de passe incorrect.',
+        }),
+    })
     const router = buildRouter(createMemoryHistory())
     await router.push('/login')
     const wrapper = mount(LoginView, {
@@ -26,6 +40,10 @@ describe('LoginView.vue', () => {
   })
 
   it('connecte avec admin / admin', async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    })
     const router = buildRouter(createMemoryHistory())
     await router.push('/login')
     const wrapper = mount(LoginView, {
@@ -36,6 +54,10 @@ describe('LoginView.vue', () => {
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
     expect(useAuth().isLoggedIn.value).toBe(true)
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/auth/login',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   it('redirige depuis /login si la session est déjà active', async () => {

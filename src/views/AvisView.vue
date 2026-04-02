@@ -6,18 +6,12 @@ import {
   featured,
   featuredLoading,
   featuredError,
-  setAppBadge,
 } from '../composables/useFeaturedFeed.js'
 
 const step = ref(1)
 const submitted = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
-
-const notificationEnabled = ref(false)
-const notificationStatus = ref('')
-
-const FEATURED_NOTIF_ENABLED_KEY = 'tp_vuejs_notif_enabled'
 
 function formatDateShort(iso) {
   if (!iso) return ''
@@ -30,47 +24,7 @@ function formatDateShort(iso) {
   }
 }
 
-function notificationsAvailable() {
-  return typeof window !== 'undefined' && typeof Notification !== 'undefined'
-}
-
-function sendNotificationTest() {
-  if (!notificationsAvailable()) {
-    return
-  }
-  if (Notification.permission !== 'granted') {
-    return
-  }
-  new Notification('Notifications activées', {
-    body: 'Vous recevrez un message quand un nouvel avis sera mis à la une.',
-    tag: 'tp-vuejs-featured-avis-test',
-  })
-  setAppBadge(1)
-}
-
-async function enableNotifications() {
-  if (!notificationsAvailable()) {
-    notificationStatus.value = 'Les notifications ne sont pas supportées sur ce navigateur.'
-    return
-  }
-  const p = await Notification.requestPermission()
-  if (p === 'granted') {
-    notificationEnabled.value = true
-    notificationStatus.value = 'Notifications activées.'
-    localStorage.setItem(FEATURED_NOTIF_ENABLED_KEY, '1')
-    sendNotificationTest()
-    return
-  }
-  notificationEnabled.value = false
-  notificationStatus.value = 'Notifications refusées.'
-  localStorage.setItem(FEATURED_NOTIF_ENABLED_KEY, '0')
-}
-
 onMounted(async () => {
-  notificationEnabled.value =
-    notificationsAvailable() &&
-    Notification.permission === 'granted' &&
-    localStorage.getItem(FEATURED_NOTIF_ENABLED_KEY) === '1'
   await acknowledgeFeaturedSeen()
 })
 
@@ -166,28 +120,9 @@ async function submitAvis() {
     <div class="featured-section">
       <div class="featured-header-row">
         <h2 class="featured-heading">Avis mis en avant</h2>
-        <div class="notif-actions">
-          <v-btn
-            v-if="!notificationEnabled"
-            size="small"
-            variant="tonal"
-            color="primary"
-            @click="enableNotifications"
-          >
-            Activer les notifications
-          </v-btn>
-          <template v-else>
-            <v-chip size="small" color="success" variant="tonal">
-              Notifications actives
-            </v-chip>
-            <v-btn size="small" variant="outlined" color="primary" @click="sendNotificationTest">
-              Tester notification
-            </v-btn>
-          </template>
-        </div>
       </div>
-      <p v-if="notificationStatus" class="notif-status text-caption text-medium-emphasis">
-        {{ notificationStatus }}
+      <p class="text-caption text-medium-emphasis mb-2">
+        Notifications pour les nouveaux avis : page <strong>Fonctionnalités</strong> du menu.
       </p>
       <v-progress-linear v-if="featuredLoading" indeterminate color="primary" class="mb-4" />
       <v-alert
@@ -562,21 +497,7 @@ async function submitAvis() {
 }
 
 .featured-header-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 0.75rem;
-}
-
-.notif-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.notif-status {
-  margin: 0 0 0.75rem;
 }
 
 .featured-empty {

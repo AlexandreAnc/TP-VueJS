@@ -19,11 +19,13 @@ describe('ProjectsView.vue', () => {
     })
   })
 
-  it('affiche le titre', () => {
+  it('affiche le titre et la mention localStorage', () => {
     const wrapper = mount(ProjectsView, {
       global: { plugins: [createTestVuetify()] },
     })
-    expect(wrapper.find('h1').text()).toContain('Votre Géolocalisation')
+    expect(wrapper.find('h1').text()).toContain('Fonctionnalités')
+    expect(wrapper.text()).toContain('contacts')
+    expect(wrapper.text()).toMatch(/localStorage/i)
   })
 
   it('affiche un message si le contexte n’est pas sécurisé', async () => {
@@ -36,7 +38,7 @@ describe('ProjectsView.vue', () => {
     })
     expect(wrapper.text()).toContain('Fonction disponible uniquement en HTTPS.')
 
-    await wrapper.find('button').trigger('click')
+    await wrapper.get('[data-testid="btn-locate"]').trigger('click')
     expect(wrapper.text()).toContain('contexte sécurisé')
   })
 
@@ -61,7 +63,7 @@ describe('ProjectsView.vue', () => {
       global: { plugins: [createTestVuetify()] },
     })
 
-    await wrapper.find('button').trigger('click')
+    await wrapper.get('[data-testid="btn-locate"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('Latitude')
@@ -81,7 +83,7 @@ describe('ProjectsView.vue', () => {
     const wrapper = mount(ProjectsView, {
       global: { plugins: [createTestVuetify()] },
     })
-    await wrapper.find('button').trigger('click')
+    await wrapper.get('[data-testid="btn-locate"]').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('Permission refusée')
   })
