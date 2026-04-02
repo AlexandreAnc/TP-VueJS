@@ -42,6 +42,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://api.tp-vuejs.aanc.fr
     ports:
       - '8010:80'
     restart: unless-stopped
