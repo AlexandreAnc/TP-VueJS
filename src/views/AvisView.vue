@@ -70,6 +70,14 @@ function notifyNewFeatured(items) {
   })
 }
 
+function sendNotificationTest() {
+  if (!notificationsAvailable() || Notification.permission !== 'granted') return
+  new Notification('Notifications activées', {
+    body: 'Vous recevrez un message quand un nouvel avis sera mis à la une.',
+    tag: 'tp-vuejs-featured-avis-test',
+  })
+}
+
 async function loadFeatured() {
   featuredLoading.value = true
   featuredError.value = ''
@@ -105,6 +113,7 @@ async function enableNotifications() {
     notificationEnabled.value = true
     notificationStatus.value = 'Notifications activées.'
     localStorage.setItem(FEATURED_NOTIF_ENABLED_KEY, '1')
+    sendNotificationTest()
     return
   }
   notificationEnabled.value = false
