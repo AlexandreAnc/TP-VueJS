@@ -4,10 +4,12 @@ const executeRaw = vi.fn().mockResolvedValue(1)
 const disconnect = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@prisma/client', () => ({
-  PrismaClient: vi.fn(function PrismaClient() {
-    this.$executeRawUnsafe = executeRaw
-    this.$disconnect = disconnect
-  }),
+  default: {
+    PrismaClient: vi.fn(function PrismaClient() {
+      this.$executeRawUnsafe = executeRaw
+      this.$disconnect = disconnect
+    }),
+  },
 }))
 
 process.env.DATABASE_URL = 'postgresql://test:test@127.0.0.1:5432/test'

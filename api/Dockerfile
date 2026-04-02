@@ -4,7 +4,10 @@ WORKDIR /app
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+COPY prisma ./prisma
+
+# Installe aussi les devDeps (Prisma CLI) pour `prisma generate`, puis génère le client.
+RUN pnpm install --frozen-lockfile && pnpm exec prisma generate
 
 COPY src ./src
 RUN chown -R node:node /app
