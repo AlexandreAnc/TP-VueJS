@@ -22,7 +22,8 @@ export default mergeConfig(
       },
       coverage: {
         provider: 'v8',
-        reporter: ['text', 'json', 'html', 'lcov'],
+        // json-summary → coverage/coverage-summary.json (lus par la CI)
+        reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
         include: ['src/**/*.vue', 'src/**/*.js', 'api/src/**/*.mjs'],
         exclude: [
           ...configDefaults.exclude,
