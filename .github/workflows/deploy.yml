@@ -14,6 +14,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'production') }}
     runs-on: ubuntu-latest
     env:
+      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.workflow_run.head_branch }}
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
       SSH_USER: ${{ secrets.SSH_USER }}
@@ -37,7 +38,7 @@ jobs:
               git clone "$REPO_URL" "\$TARGET_DIR"
             else
               git -C "\$TARGET_DIR" fetch --all
-              git -C "\$TARGET_DIR" reset --hard "origin/${{ github.event.workflow_run.head_branch }}"
+              git -C "\$TARGET_DIR" reset --hard "origin/${{ env.DEPLOY_REF }}"
             fi
 
             cd "\$TARGET_DIR"
