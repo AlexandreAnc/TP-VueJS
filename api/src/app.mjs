@@ -3,9 +3,19 @@ import express from 'express'
 import { parseAvisId, validateAvisPayload } from './avisValidation.mjs'
 
 /**
- * @param {() => import('pg').Pool} getPool
+ * @param {() => import('@prisma/client').PrismaClient} getPrisma
  */
-export function createApp(getPool) {
+export function createApp(getPrisma) {
+  const mapAvis = (a) => ({
+    id: a.id,
+    name: a.authorName,
+    rating: a.rating,
+    comment: a.comment,
+    wouldRecommend: a.recommends,
+    whitelisted: a.whitelisted,
+    createdAt: a.createdAt,
+  })
+
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', 1)
@@ -24,8 +34,8 @@ export function createApp(getPool) {
     let dbOk = false
     let dbError = null
     try {
-      const p = getPool()
-      await p.query('SELECT 1 AS one')
+      const p = getPrisma()
+      await p.$queryRawUnsafe('SELECT 1 AS one')
       dbOk = true
     } catch (err) {
       dbError = err instanceof Error ? err.message : String(err)
@@ -49,11 +59,11 @@ export function createApp(getPool) {
 
   app.get('/api/db', async (_req, res) => {
     try {
-      const p = getPool()
-      const { rows } = await p.query(
+      const p = getPrisma()
+      const rows = await p.$queryRawUnsafe(
         'SELECT current_database() AS db, current_user AS user',
       )
-      res.json({ ok: true, postgres: rows[0] })
+      res.json({ ok: true, postgres: rows[0] || null })
     } catch (err) {
       res.status(503).json({
         ok: false,
@@ -66,16 +76,13 @@ export function createApp(getPool) {
     try {
       const raw = Number(req.query.limit)
       const limit = Number.isFinite(raw) ? Math.min(50, Math.max(1, Math.floor(raw))) : 20
-      const p = getPool()
-      const { rows } = await p.query(
-        `SELECT id, author_name AS name, rating, comment, recommends AS "wouldRecommend", created_at AS "createdAt"
-         FROM avis
-         WHERE whitelisted = TRUE
-         ORDER BY created_at DESC
-         LIMIT $1`,
-        [limit],
-      )
-      res.json({ ok: true, items: rows })
+      const p = getPrisma()
+      const items = await p.avis.findMany({
+        where: { whitelisted: true },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      })
+      res.json({ ok: true, items: items.map(mapAvis) })
     } catch (err) {
       res.status(500).json({
         ok: false,
@@ -88,16 +95,12 @@ export function createApp(getPool) {
     try {
       const raw = Number(req.query.limit)
       const limit = Number.isFinite(raw) ? Math.min(100, Math.max(1, Math.floor(raw))) : 30
-      const p = getPool()
-      const { rows } = await p.query(
-        `SELECT id, author_name AS name, rating, comment, recommends AS "wouldRecommend",
-                whitelisted, created_at AS "createdAt"
-         FROM avis
-         ORDER BY created_at DESC
-         LIMIT $1`,
-        [limit],
-      )
-      res.json({ ok: true, items: rows })
+      const p = getPrisma()
+      const items = await p.avis.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      })
+      res.json({ ok: true, items: items.map(mapAvis) })
     } catch (err) {
       res.status(500).json({
         ok: false,
@@ -112,14 +115,17 @@ export function createApp(getPool) {
       return res.status(400).json({ ok: false, errors: v.errors })
     }
     try {
-      const p = getPool()
-      const { rows } = await p.query(
-        `INSERT INTO avis (author_name, rating, comment, recommends, whitelisted)
-         VALUES ($1, $2, $3, $4, FALSE)
-         RETURNING id, author_name AS name, rating, comment, recommends AS "wouldRecommend", whitelisted, created_at AS "createdAt"`,
-        [v.name, v.rating, v.comment, v.wouldRecommend],
-      )
-      res.status(201).json({ ok: true, item: rows[0] })
+      const p = getPrisma()
+      const item = await p.avis.create({
+        data: {
+          authorName: v.name,
+          rating: v.rating,
+          comment: v.comment,
+          recommends: v.wouldRecommend,
+          whitelisted: false,
+        },
+      })
+      res.status(201).json({ ok: true, item: mapAvis(item) })
     } catch (err) {
       res.status(500).json({
         ok: false,
@@ -138,16 +144,16 @@ export function createApp(getPool) {
       return res.status(400).json({ ok: false, error: 'whitelisted: booléen requis' })
     }
     try {
-      const p = getPool()
-      const { rowCount, rows } = await p.query(
-        `UPDATE avis SET whitelisted = $1 WHERE id = $2
-         RETURNING id, author_name AS name, rating, comment, recommends AS "wouldRecommend", whitelisted, created_at AS "createdAt"`,
-        [w, id],
-      )
-      if (!rowCount) {
+      const p = getPrisma()
+      const existing = await p.avis.findUnique({ where: { id } })
+      if (!existing) {
         return res.status(404).json({ ok: false, error: 'avis introuvable' })
       }
-      res.json({ ok: true, item: rows[0] })
+      const item = await p.avis.update({
+        where: { id },
+        data: { whitelisted: w },
+      })
+      res.json({ ok: true, item: mapAvis(item) })
     } catch (err) {
       res.status(500).json({
         ok: false,
@@ -162,11 +168,12 @@ export function createApp(getPool) {
       return res.status(400).json({ ok: false, error: 'id invalide' })
     }
     try {
-      const p = getPool()
-      const { rowCount } = await p.query('DELETE FROM avis WHERE id = $1', [id])
-      if (!rowCount) {
+      const p = getPrisma()
+      const existing = await p.avis.findUnique({ where: { id } })
+      if (!existing) {
         return res.status(404).json({ ok: false, error: 'avis introuvable' })
       }
+      await p.avis.delete({ where: { id } })
       res.json({ ok: true, deleted: id })
     } catch (err) {
       res.status(500).json({

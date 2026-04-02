@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Avis {
+  id          Int      @id @default(autoincrement())
+  authorName  String   @map("author_name")
+  rating      Int
+  comment     String
+  recommends  Boolean
+  whitelisted Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("avis")
+}
+
+model ApiMeta {
+  key       String   @id
+  value     String
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("api_meta")
+}

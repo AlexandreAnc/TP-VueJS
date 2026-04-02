@@ -1,0 +1,54 @@
+# Production : frontend (Nginx) + API Express + PostgreSQL
+# Variables requises sur la machine / CI : POSTGRES_PASSWORD
+#
+# Reverse proxy Nginx (hôte) suggéré :
+#   tp-vuejs.aanc.fr      -> 127.0.0.1:8010 (web)
+#   api.tp-vuejs.aanc.fr -> 127.0.0.1:8011 (api)
+#
+# Fichier relatif au dossier deployment/ : contextes ../ et ../api pointent vers la racine du dépôt.
+
+name: tp-vuejs
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tpvuejs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définir POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-tpvuejs}
+    volumes:
+      - tp_vuejs_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tpvuejs -d tpvuejs || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tpvuejs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tpvuejs}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:8011:3000'
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+      args:
+        VITE_API_URL: https://api.tp-vuejs.aanc.fr
+    ports:
+      - '8010:80'
+    restart: unless-stopped
+
+volumes:
+  tp_vuejs_pgdata:

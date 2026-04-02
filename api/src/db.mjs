@@ -1,39 +1,36 @@
-import pg from 'pg'
+import { PrismaClient } from '@prisma/client'
 
-const { Pool } = pg
+let prisma = null
 
-let pool = null
-
-export function getPool() {
+export function getPrisma() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL manquant')
   }
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 10,
-      idleTimeoutMillis: 30_000,
-    })
+  if (!prisma) {
+    prisma = new PrismaClient()
   }
-  return pool
+  return prisma
 }
 
 export async function ensureSchema() {
-  const p = getPool()
-  await p.query(`
+  const p = getPrisma()
+
+  // Keep startup idempotent in dev/prod without forcing migrations in runtime.
+  await p.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS api_meta (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `)
-  await p.query(`
-    INSERT INTO api_meta (key, value)
-    VALUES ('last_deploy_check', $1)
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
-  `, [new Date().toISOString()])
 
-  await p.query(`
+  await p.$executeRawUnsafe(`
+    INSERT INTO api_meta (key, value)
+    VALUES ('last_deploy_check', '${new Date().toISOString()}')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+  `)
+
+  await p.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS avis (
       id SERIAL PRIMARY KEY,
       author_name TEXT NOT NULL,
@@ -44,8 +41,15 @@ export async function ensureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `)
-  await p.query(`
+
+  await p.$executeRawUnsafe(`
     ALTER TABLE avis ADD COLUMN IF NOT EXISTS whitelisted BOOLEAN NOT NULL DEFAULT FALSE;
   `)
+}
 
+export async function disconnectPrisma() {
+  if (prisma) {
+    await prisma.$disconnect()
+    prisma = null
+  }
 }

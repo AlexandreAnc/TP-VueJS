@@ -23,7 +23,7 @@ describe('ProjectsView.vue', () => {
     const wrapper = mount(ProjectsView, {
       global: { plugins: [createTestVuetify()] },
     })
-    expect(wrapper.find('h1').text()).toContain('Votre Géolocalisation')
+    expect(wrapper.find('h1').text()).toContain('Votre Géolocalisation -')
   })
 
   it('affiche un message si le contexte n’est pas sécurisé', async () => {

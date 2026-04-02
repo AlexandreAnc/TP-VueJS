@@ -52,7 +52,7 @@ jobs:
             # Compose v2 : commande « docker compose » (plugin). Sur Debian vanilla le paquet
             # docker-compose-plugin n’est que dans le dépôt Docker officiel — sinon on installe
             # le binaire plugin dans ~/.docker/cli-plugins/ (documentation Docker).
-            COMPOSE_FILE=docker-compose.prod.yml
+            COMPOSE_FILE=deployment/docker-compose.prod.yml
             if ! docker compose version >/dev/null 2>&1; then
               if command -v docker-compose >/dev/null 2>&1; then
                 :

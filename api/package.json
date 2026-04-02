@@ -5,14 +5,19 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.mjs",
-    "dev": "node --env-file=.env.development --watch src/index.mjs"
+    "dev": "node --env-file=.env.development --watch src/index.mjs",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@prisma/client": "^6.6.0",
     "cors": "^2.8.5",
-    "express": "^5.0.0",
-    "pg": "^8.13.0"
+    "express": "^5.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.6.0"
   }
 }

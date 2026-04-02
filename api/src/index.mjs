@@ -1,5 +1,5 @@
 import { createApp } from './app.mjs'
-import { ensureSchema, getPool } from './db.mjs'
+import { ensureSchema, getPrisma } from './db.mjs'
 
 const PORT = Number(process.env.PORT) || 3000
 
@@ -9,7 +9,7 @@ async function main() {
     process.exit(1)
   }
   await ensureSchema()
-  const app = createApp(getPool)
+  const app = createApp(getPrisma)
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`API en écoute sur le port ${PORT}`)
   })
