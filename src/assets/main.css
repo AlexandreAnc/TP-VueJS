@@ -50,9 +50,9 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  max-width: 1100px;
+  max-width: min(1120px, 100%);
   margin: 0 auto;
-  padding: 1rem;
+  padding: clamp(0.5rem, 2.5vw, 1.25rem);
   width: 100%;
   background: transparent !important;
 }
@@ -80,9 +80,31 @@ p {
 .page-card {
   background: #ffffff;
   border: 1px solid var(--color-200);
-  border-radius: 14px;
-  padding: 1.25rem;
+  border-radius: clamp(12px, 2vw, 16px);
+  padding: clamp(1rem, 3.5vw, 1.35rem);
   box-shadow: 0 6px 20px rgb(56 31 45 / 6%);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+html.theme-dark body {
+  color: #e8dde3;
+  background: linear-gradient(180deg, #1a141c 0%, #121016 100%);
+}
+
+html.theme-dark h1 {
+  color: var(--color-200);
+}
+
+html.theme-dark p {
+  color: var(--color-300);
+}
+
+html.theme-dark .page-card {
+  background: #252028;
+  border-color: #4a3d52;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 35%);
 }
 
 /* View Transitions API (document.startViewTransition dans le routeur) */

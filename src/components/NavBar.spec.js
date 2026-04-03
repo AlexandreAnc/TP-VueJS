@@ -45,7 +45,7 @@ describe('NavBar.vue', () => {
       global: { plugins: [createTestVuetify(), router] },
     })
     await flushPromises()
-    await wrapper.find('button.btn-logout').trigger('click')
+    await wrapper.find('[data-testid="btn-logout"]').trigger('click')
     expect(useAuth().isLoggedIn.value).toBe(false)
   })
 
@@ -57,7 +57,7 @@ describe('NavBar.vue', () => {
       global: { plugins: [createTestVuetify(), router] },
     })
     await flushPromises()
-    await wrapper.find('button.btn-logout').trigger('click')
+    await wrapper.find('[data-testid="btn-logout"]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/')
   })

@@ -581,11 +581,20 @@ onMounted(() => {
 .form-grid {
   display: grid;
   gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 600px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .osm-map {
   width: 100%;
-  min-height: 360px;
+  min-height: clamp(220px, 45vh, 400px);
+  aspect-ratio: 16 / 10;
+  max-height: min(70vh, 520px);
   border: 1px solid var(--color-200);
   border-radius: 12px;
   margin: 0.75rem 0;

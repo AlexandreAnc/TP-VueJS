@@ -19,7 +19,7 @@ onMounted(async () => {
 <template>
   <v-app>
     <NavBar />
-    <v-main class="page-shell">
+    <v-main class="page-shell flex-grow-1">
       <RouterView />
     </v-main>
     <AppFooter />
@@ -28,6 +28,7 @@ onMounted(async () => {
 
 <style scoped>
 .page-shell {
-  margin-top: 1rem;
+  margin-top: clamp(0.5rem, 2vw, 1rem);
+  padding-bottom: clamp(0.25rem, 1.5vw, 0.75rem);
 }
 </style>

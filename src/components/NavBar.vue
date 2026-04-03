@@ -1,17 +1,31 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { useAppTheme } from '../composables/useAppTheme.js'
 
 const route = useRoute()
 const router = useRouter()
 const { isLoggedIn, logout } = useAuth()
+const { isDark, toggleTheme } = useAppTheme()
 
 const links = [
   { to: '/', label: 'Accueil' },
   { to: '/projets', label: 'Fonctionnalités' },
   { to: '/avis', label: 'Avis' },
-  { to: '/contact', label: 'Contact' },
 ]
+
+const adminLink = computed(() => ({
+  to: '/back-office',
+  label: 'Back Office',
+}))
+
+function linkActive(path) {
+  if (path === '/') {
+    return route.path === '/'
+  }
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
 
 function handleLogout() {
   const leaveBackOffice =
@@ -24,97 +38,93 @@ function handleLogout() {
 </script>
 
 <template>
-  <header class="navbar">
-    <div class="brand">TP VueJS</div>
-    <nav class="menu" aria-label="Navigation principale">
-      <RouterLink
-        v-for="link in links"
-        :key="link.to"
-        :to="link.to"
-        class="menu-link"
+  <v-sheet
+    class="navbar-sheet"
+    data-testid="main-nav"
+    border
+    rounded="lg"
+    elevation="0"
+    color="surface"
+  >
+    <v-container fluid class="navbar-inner pa-3 pa-sm-4">
+      <div
+        class="d-flex flex-column flex-md-row align-md-center justify-md-space-between ga-3 w-100"
       >
-        {{ link.label }}
-      </RouterLink>
-      <RouterLink
-        v-if="isLoggedIn"
-        to="/back-office"
-        class="menu-link menu-link-admin"
-      >
-        Back Office
-      </RouterLink>
-      <RouterLink v-if="!isLoggedIn" to="/login" class="menu-link menu-link-auth">
-        Connexion
-      </RouterLink>
-      <button
-        v-else
-        type="button"
-        class="menu-link menu-link-auth btn-logout"
-        @click="handleLogout"
-      >
-        Déconnexion
-      </button>
-    </nav>
-  </header>
+        <span class="text-h6 text-sm-h5 font-weight-bold text-primary flex-shrink-0">
+          TP VueJS
+        </span>
+        <div class="d-flex flex-wrap align-center ga-2 justify-md-end">
+          <v-btn
+            v-for="link in links"
+            :key="link.to"
+            :to="link.to"
+            size="small"
+            rounded="pill"
+            class="text-none"
+            :variant="linkActive(link.to) ? 'flat' : 'tonal'"
+            :color="linkActive(link.to) ? 'primary' : undefined"
+          >
+            {{ link.label }}
+          </v-btn>
+          <v-btn
+            v-if="isLoggedIn"
+            :to="adminLink.to"
+            size="small"
+            rounded="pill"
+            class="text-none"
+            variant="outlined"
+            :color="linkActive(adminLink.to) ? 'primary' : undefined"
+          >
+            {{ adminLink.label }}
+          </v-btn>
+          <v-btn
+            v-if="!isLoggedIn"
+            to="/login"
+            size="small"
+            rounded="pill"
+            class="text-none"
+            variant="flat"
+            color="primary"
+          >
+            Connexion
+          </v-btn>
+          <v-btn
+            v-else
+            type="button"
+            size="small"
+            rounded="pill"
+            class="text-none btn-logout"
+            variant="text"
+            color="primary"
+            data-testid="btn-logout"
+            @click="handleLogout"
+          >
+            Déconnexion
+          </v-btn>
+          <v-btn
+            type="button"
+            icon
+            variant="tonal"
+            size="small"
+            rounded="lg"
+            class="theme-toggle"
+            data-testid="theme-toggle"
+            :aria-label="isDark ? 'Passer en mode jour' : 'Passer en mode nuit'"
+            :title="isDark ? 'Mode jour' : 'Mode nuit'"
+            @click="toggleTheme"
+          >
+            <v-icon :icon="isDark ? 'mdi-white-balance-sunny' : 'mdi-weather-night'" size="20" />
+          </v-btn>
+        </div>
+      </div>
+    </v-container>
+  </v-sheet>
 </template>
 
 <style scoped>
-.navbar {
+.navbar-sheet {
   position: sticky;
-  top: 1rem;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background: var(--color-50);
-  border: 1px solid var(--color-200);
-  border-radius: 14px;
-  padding: 0.75rem 1rem;
-}
-
-.brand {
-  font-weight: 700;
-  color: var(--color-800);
-}
-
-.menu {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.menu-link {
-  text-decoration: none;
-  color: var(--color-700);
-  background: white;
-  border: 1px solid var(--color-200);
-  border-radius: 999px;
-  padding: 0.4rem 0.8rem;
-  transition: all 120ms ease;
-}
-
-.menu-link:hover {
-  color: var(--color-900);
-  border-color: var(--color-400);
-  background: var(--color-100);
-}
-
-.menu-link.router-link-exact-active {
-  background: var(--color-600);
-  border-color: var(--color-600);
-  color: white;
-}
-
-.menu-link-admin {
-  border-style: dashed;
-}
-
-.menu-link-auth {
-  margin-left: 0.25rem;
-}
-
-.btn-logout {
-  font: inherit;
-  cursor: pointer;
+  top: clamp(0.25rem, 2vw, 0.75rem);
+  z-index: 1004;
 }
 </style>

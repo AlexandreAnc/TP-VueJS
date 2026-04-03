@@ -1,38 +1,36 @@
 <template>
-  <footer class="app-footer">
-    <p class="footer-text">TP VueJS</p>
-    <p class="footer-subtext">Réalise par <a href="https://alexanc.fr" target="_blank">Alexandre Ancelle</a></p>
-  </footer>
+  <v-sheet
+    class="app-footer mt-4"
+    border
+    rounded="lg"
+    elevation="0"
+    color="surface"
+  >
+    <v-container fluid class="pa-3 pa-sm-4">
+      <v-row align="center" justify="space-between">
+        <v-col cols="12" sm="auto" class="text-center text-sm-start">
+          <span class="text-body-1 font-weight-semibold text-primary">TP VueJS</span>
+        </v-col>
+        <v-col cols="12" sm="auto" class="text-center text-sm-end">
+          <span class="text-caption text-medium-emphasis">
+            Réalisé par
+            <a
+              href="https://alexanc.fr"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-decoration-none text-primary"
+            >
+              Alexandre Ancelle
+            </a>
+          </span>
+        </v-col>
+      </v-row>
+    </v-container>
+  </v-sheet>
 </template>
 
 <style scoped>
-.app-footer {
-  margin-top: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background: var(--color-50);
-  border: 1px solid var(--color-200);
-  border-radius: 14px;
-  padding: 0.75rem 1rem;
-}
-
-.footer-text {
-  color: var(--color-800);
-  font-weight: 600;
-}
-
-.footer-subtext {
-  color: var(--color-700);
-  font-size: 0.8rem;
-}
-
-.footer-subtext a {
-  color: var(--color-600);
-}
-
-.footer-subtext a:hover {
-  color: var(--color-700);
+.app-footer a:hover {
+  text-decoration: underline !important;
 }
 </style>

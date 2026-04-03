@@ -32,8 +32,8 @@ describe('App.vue', () => {
 
   it('affiche la barre de navigation et le pied de page', async () => {
     const wrapper = await mountApp()
-    expect(wrapper.find('header.navbar').exists()).toBe(true)
-    expect(wrapper.find('footer.app-footer').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="main-nav"]').exists()).toBe(true)
+    expect(wrapper.find('.app-footer').exists()).toBe(true)
     expect(startFeaturedPollingMock).toHaveBeenCalledTimes(1)
   })
 
