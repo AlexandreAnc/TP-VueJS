@@ -1,3 +1,4 @@
+import { registerSW } from 'virtual:pwa-register'
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 import './assets/main.css'
@@ -35,5 +36,7 @@ const vuetify = createVuetify({
     },
   },
 })
+
+registerSW({ immediate: true })
 
 createApp(App).use(vuetify).use(router).mount('#app')

@@ -27,6 +27,7 @@ Application web réalisée dans le cadre d’un **travail pratique** : interface
 | **Front** | [Vue.js 3](https://vuejs.org/) (Composition API), [Vue Router 5](https://router.vuejs.org/) |
 | **UI** | [Vuetify 4](https://vuetifyjs.com/), [Material Design Icons](https://pictogrammers.com/library/mdi/) (`@mdi/font`) |
 | **Build** | [Vite 8](https://vitejs.dev/) |
+| **PWA** | [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) (manifest, service worker Workbox, `registerType: 'autoUpdate'`) |
 | **API** | [Node.js](https://nodejs.org/) 20+, [Express 5](https://expressjs.com/), [Prisma 6](https://www.prisma.io/) |
 | **Base de données** | [PostgreSQL 16](https://www.postgresql.org/) (avis, modération back-office) |
 | **Conteneurs** | [Docker](https://www.docker.com/) / Docker Compose (prod : front Nginx + API + Postgres) |
@@ -53,7 +54,7 @@ TP-VueJS/
 
 | Dossier / fichier | Rôle |
 |-------------------|------|
-| `main.js` | Point d’entrée : Vuetify, thème clair/sombre, styles globaux, `@mdi/font` |
+| `main.js` | Point d’entrée : enregistrement PWA (`virtual:pwa-register`), Vuetify, thème, `@mdi/font` |
 | `App.vue` | Layout : barre de navigation, `<RouterView>`, pied de page |
 | `assets/main.css` | Variables CSS, cartes `.page-card`, mode sombre (`html.theme-dark`) |
 | `components/` | `NavBar.vue`, `AppFooter.vue` (navigation, thème, auth) |
@@ -111,6 +112,25 @@ pnpm install --dir api
    pnpm test
    pnpm test:coverage
    ```
+
+### Connexion back-office (démo — pour correction / test)
+
+Identifiants par défaut si vous n’avez **pas** surchargé `ADMIN_USERNAME` / `ADMIN_PASSWORD` dans l’API :
+
+| Champ | Valeur |
+|-------|--------|
+| **Identifiant** | `admin` |
+| **Mot de passe** | `admin` |
+
+Ouvrir **`/login`** (ou **`/back-office`**, qui redirige vers la connexion si non connecté).  
+En **local**, le fichier `api/.env.development` prévoit en général **`RECAPTCHA_SKIP_VERIFY=1`** : le reCAPTCHA est ignoré côté API ; côté front, **`VITE_RECAPTCHA_DEV_BYPASS=1`** à la racine (si présent) évite de charger le widget. **En production**, il faut les clés reCAPTCHA configurées pour que le login fonctionne.
+
+### PWA (installable, hors ligne partielle)
+
+Le build de production génère un **`manifest.webmanifest`**, un **service worker** (`dist/sw.js`) et met en cache les assets statiques (shell de l’app). L’API (`/api` en dev via proxy, domaine séparé en prod) **n’est pas** mise en cache par le SW.
+
+- **Icônes** : `public/pwa-192x192.png`, `public/pwa-512x512.png` (tu peux les remplacer par ta charte).
+- **Tester comme une PWA** : `pnpm build` puis `pnpm preview`, ouvrir l’URL affichée (souvent `http://localhost:4173`) ; sous **Chrome** : panneau *Application* → *Manifest* / *Service workers*. L’installation (« Ajouter à l’écran d’accueil ») est surtout visible en **HTTPS** ou sur **localhost**.
 
 ---
 
@@ -178,6 +198,18 @@ Sans jeton valide, l’API répond **401** sur ces trois routes.
 - **Sans base de données de session** : tout ce qu’il faut est dans le jeton + le secret serveur ; changer `ADMIN_SESSION_SECRET` invalide d’un coup les jetons déjà émis.
 
 En **production**, `ADMIN_SESSION_SECRET` est **obligatoire** au démarrage de l’API (`api/src/index.mjs`), sinon le processus quitte : évite de déployer avec la valeur de développement par défaut.
+
+### Limites et usage prévu (démo / TP)
+
+Ce choix d’auth est **volontairement simple** pour un **travail pratique** : le **serveur** impose bien une preuve sur les routes sensibles, ce qui est l’essentiel pédagogique.
+
+**Concernant le jeton et son stockage**, attention : c’est adapté à une **démo**, pas à un contexte **critique** (banque, données très sensibles, forte menace) sans aller plus loin. En particulier :
+
+- Le jeton vit dans le **`localStorage`** du navigateur : en cas de **XSS** (injection de script sur le site), un attaquant pourrait **lire** ce jeton et réutiliser l’API. Des architectures « pro » privilégient souvent des **cookies httpOnly** (avec gestion du **CSRF**), ou des tokens en mémoire + durée de vie très courte, etc.
+- Il n’y a **pas de révocation serveur** avant expiration : tant que le jeton est valide, il fonctionne (sauf rotation de `ADMIN_SESSION_SECRET`).
+- Les identifiants par défaut **`admin` / `admin`** et l’objectif pédagogique ne remplacent pas un **mot de passe fort** et une **politique de secrets** si l’enjeu devient réel.
+
+En résumé : **safe pour apprendre et pour une petite appli** avec contrôle serveur réel ; pour un usage **critique**, il faudrait durcir le modèle (stockage du **jeton**, surface XSS, révocation, MFA, cookies httpOnly, etc.).
 
 ---
 
