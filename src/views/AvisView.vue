@@ -221,92 +221,106 @@ async function submitAvis() {
       </div>
 
       <v-form class="avis-form" @submit.prevent>
-        <!-- Étape 1 -->
-        <div v-show="step === 1" class="step-panel">
-          <h2 class="step-title">Étape 1 — Identité et note</h2>
-          <v-text-field
-            v-model="form.name"
-            label="Pseudo ou prénom"
-            variant="outlined"
-            density="comfortable"
-            hide-details="auto"
-            :rules="[(v) => (v && String(v).trim().length >= 2) || 'Au moins 2 caractères']"
-          />
-          <v-select
-            v-model="form.rating"
-            :items="ratingItems"
-            item-title="title"
-            item-value="value"
-            label="Note globale"
-            variant="outlined"
-            density="comfortable"
-            hide-details="auto"
-            clearable
-          />
-        </div>
-
-        <!-- Étape 2 -->
-        <div v-show="step === 2" class="step-panel">
-          <h2 class="step-title">Étape 2 — Détail de votre avis</h2>
-          <v-textarea
-            v-model="form.comment"
-            label="Votre commentaire"
-            variant="outlined"
-            rows="5"
-            counter="500"
-            maxlength="500"
-            hint="Minimum 10 caractères"
-            persistent-hint
-          />
-          <div class="recommend-block">
-            <p id="recommend-label" class="field-label">Recommanderiez-vous ce service ?</p>
-            <div
-              class="recommend-choices"
-              role="group"
-              aria-labelledby="recommend-label"
-            >
-              <button
-                type="button"
-                class="choice-btn"
-                :class="{ 'is-selected': form.wouldRecommend === true }"
-                :aria-pressed="form.wouldRecommend === true"
-                @click="form.wouldRecommend = true"
-              >
-                Oui
-              </button>
-              <button
-                type="button"
-                class="choice-btn"
-                :class="{ 'is-selected': form.wouldRecommend === false }"
-                :aria-pressed="form.wouldRecommend === false"
-                @click="form.wouldRecommend = false"
-              >
-                Non
-              </button>
+        <!--
+          v-window : transition horizontale automatique (Vuetify).
+          Index qui augmente → nouvelle étape arrive par la droite ; qui diminue → sens inverse.
+        -->
+        <v-window
+          v-model="step"
+          class="avis-step-window"
+          :show-arrows="false"
+          :touch="false"
+        >
+          <v-window-item :value="1">
+            <div class="step-panel">
+              <h2 class="step-title">Étape 1 — Identité et note</h2>
+              <v-text-field
+                v-model="form.name"
+                label="Pseudo ou prénom"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                :rules="[(v) => (v && String(v).trim().length >= 2) || 'Au moins 2 caractères']"
+              />
+              <v-select
+                v-model="form.rating"
+                :items="ratingItems"
+                item-title="title"
+                item-value="value"
+                label="Note globale"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                clearable
+              />
             </div>
-          </div>
-        </div>
+          </v-window-item>
 
-        <!-- Étape 3 -->
-        <div v-show="step === 3" class="step-panel">
-          <h2 class="step-title">Étape 3 — Vérification</h2>
-          <v-list class="recap-list" density="comfortable" rounded="lg" border>
-            <v-list-item title="Nom" :subtitle="form.name || '—'" />
-            <v-list-item title="Note" :subtitle="form.rating ? `${form.rating} / 5` : '—'" />
-            <v-list-item title="Commentaire">
-              <template #subtitle>
-                <span class="recap-comment">{{ form.comment || '—' }}</span>
-              </template>
-            </v-list-item>
-            <v-list-item
-              title="Recommandation"
-              :subtitle="form.wouldRecommend === null ? '—' : form.wouldRecommend ? 'Oui' : 'Non'"
-            />
-          </v-list>
-          <p class="hint">
-            Vous pouvez utiliser « Précédent » pour modifier une étape avant de valider.
-          </p>
-        </div>
+          <v-window-item :value="2">
+            <div class="step-panel">
+              <h2 class="step-title">Étape 2 — Détail de votre avis</h2>
+              <v-textarea
+                v-model="form.comment"
+                label="Votre commentaire"
+                variant="outlined"
+                rows="5"
+                counter="500"
+                maxlength="500"
+                hint="Minimum 10 caractères"
+                persistent-hint
+              />
+              <div class="recommend-block">
+                <p id="recommend-label" class="field-label">Recommanderiez-vous ce projet ?</p>
+                <div
+                  class="recommend-choices"
+                  role="group"
+                  aria-labelledby="recommend-label"
+                >
+                  <button
+                    type="button"
+                    class="choice-btn"
+                    :class="{ 'is-selected': form.wouldRecommend === true }"
+                    :aria-pressed="form.wouldRecommend === true"
+                    @click="form.wouldRecommend = true"
+                  >
+                    Oui
+                  </button>
+                  <button
+                    type="button"
+                    class="choice-btn"
+                    :class="{ 'is-selected': form.wouldRecommend === false }"
+                    :aria-pressed="form.wouldRecommend === false"
+                    @click="form.wouldRecommend = false"
+                  >
+                    Non
+                  </button>
+                </div>
+              </div>
+            </div>
+          </v-window-item>
+
+          <v-window-item :value="3">
+            <div class="step-panel">
+              <h2 class="step-title">Étape 3 — Vérification</h2>
+              <v-list class="recap-list" density="comfortable" rounded="lg" border>
+                <v-list-item title="Nom" :subtitle="form.name || '—'" />
+                <v-list-item title="Note" :subtitle="form.rating ? `${form.rating} / 5` : '—'" />
+                <v-list-item title="Commentaire">
+                  <template #subtitle>
+                    <span class="recap-comment">{{ form.comment || '—' }}</span>
+                  </template>
+                </v-list-item>
+                <v-list-item
+                  title="Recommandation"
+                  :subtitle="form.wouldRecommend === null ? '—' : form.wouldRecommend ? 'Oui' : 'Non'"
+                />
+              </v-list>
+              <p class="hint">
+                Vous pouvez utiliser « Précédent » pour modifier une étape avant de valider.
+              </p>
+            </div>
+          </v-window-item>
+        </v-window>
 
         <div class="actions">
           <v-btn v-if="step > 1" variant="text" @click="prev">Précédent</v-btn>
@@ -550,5 +564,14 @@ async function submitAvis() {
 
 .form-lead {
   margin-bottom: 1.25rem;
+}
+
+/* Contient le slide horizontal (v-window-x-transition / -reverse) */
+.avis-step-window {
+  overflow: hidden;
+}
+
+.avis-step-window :deep(.v-window__container) {
+  border-radius: 12px;
 }
 </style>

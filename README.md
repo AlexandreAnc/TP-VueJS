@@ -13,6 +13,7 @@ Application web réalisée dans le cadre d’un **travail pratique** : interface
 - [Fichiers et dossiers importants](#fichiers-et-dossiers-importants)
 - [Développement local](#développement-local)
 - [Variables d’environnement](#variables-denvironnement)
+- [Sécurité API (avis admin)](#sécurité-api-avis-admin)
 - [Déploiement (Docker, proxy, DNS, reCAPTCHA)](#déploiement-docker-proxy-dns-recaptcha)
 - [Makefile (production &amp; dev DB)](#makefile-production--dev-db)
 - [Tests &amp; CI](#tests--ci)
@@ -74,6 +75,7 @@ Les tests unitaires sont en général **à côté du code** (`*.spec.js`, `*.tes
 - **`api/Dockerfile`** — Image **API** : install des deps, `prisma generate`, exécution `node src/index.mjs`.
 - **`deployment/docker-compose.dev.yml`** — **PostgreSQL uniquement** pour le dev local (port hôte **5433** pour éviter le conflit avec un Postgres local sur 5432).
 - **`api/prisma/`** — Schéma et client Prisma ; la table des avis est utilisée par l’API et le back-office.
+- **`api/src/adminToken.mjs`** — Jeton admin signé (HMAC) et middleware `requireAdmin` sur les routes sensibles des avis (voir [Sécurité API (avis admin)](#sécurité-api-avis-admin)).
 - **`.env` / `.env.development`** — Secrets et config locale (voir section variables). Les fichiers sensibles sont listés dans `.gitignore`.
 
 ---
@@ -135,6 +137,50 @@ pnpm install --dir api
 
 ---
 
+## Sécurité API (avis admin)
+
+L’interface **back-office** (liste complète des avis, mise en avant, suppression) ne suffit pas à sécuriser l’API : il faut que le **serveur** refuse les appels non authentifiés.
+
+**Routes ouvertes** (sans jeton) :
+
+- `GET /api/avis/public` — avis publiés (« à la une »), pour la page Avis.
+- `POST /api/avis` — soumission d’un **nouvel** avis (formulaire visiteur).
+
+**Routes réservées à l’admin** — elles exigent l’en-tête HTTP  
+`Authorization: Bearer <jeton>` (jeton obtenu **après** un login réussi) :
+
+- `GET /api/avis` — liste **tous** les avis (y compris non validés).
+- `PATCH /api/avis/:id` — modifier le statut « à la une » (`whitelisted`).
+- `DELETE /api/avis/:id` — supprimer un avis.
+
+Sans jeton valide, l’API répond **401** sur ces trois routes.
+
+**Comment ça marche (simple)** :
+
+1. **`POST /api/auth/login`** : après vérification des identifiants (`ADMIN_USERNAME` / `ADMIN_PASSWORD`) et de **reCAPTCHA v3**, l’API renvoie un **jeton** signé (HMAC-SHA256 avec `ADMIN_SESSION_SECRET`), contenant une date d’expiration (environ 24 h). Aucune session en base : le serveur recalcule la signature à chaque requête.
+2. **Front** (`src/composables/useAuth.js`) : le jeton est stocké en **localStorage** ; la vue back-office envoie `Authorization: Bearer …` sur les `fetch` concernés (`authHeaders()`).
+3. **Code côté API** : `api/src/adminToken.mjs` (création / vérification du jeton, middleware `requireAdmin`), monté sur les routes sensibles dans `api/src/app.mjs`.
+
+### Jeton `Bearer` :
+
+- **Transport** : le schéma **`Authorization: Bearer <jeton>`** est le mode courant pour envoyer un secret d’accès dans une requête HTTP ; le client (back-office) place le jeton après `Bearer `, l’API le lit dans `requireAdmin` et le valide avant d’exécuter la route.
+
+- **Ce n’est pas un JWT** : il n’y a pas de bibliothèque type `jsonwebtoken`. Le projet utilise un **format compact maison** : une chaîne `payload.signature` avec un **seul** point de séparation.
+
+- **Génération** (`createAdminToken` dans `adminToken.mjs`) :
+  1. **Payload** : objet JSON `{"role":"admin","exp":<timestamp>}` où `exp` = maintenant + **24 h** (durée de vie).
+  2. Encodage du JSON en **base64url** → première partie du jeton.
+  3. **Signature** : **HMAC-SHA256** de cette chaîne (payload encodé), avec la clé **`ADMIN_SESSION_SECRET`**, résultat en **base64url** → deuxième partie.
+  4. Jeton final : `base64url(payloadJson).base64url(hmac)` (implémentation via le module Node **`crypto`** : `createHmac('sha256', secret)`).
+
+- **Vérification** : le serveur recoupe le jeton au `.`, recalcule le HMAC avec le même secret, compare la signature avec **`timingSafeEqual`** (évite les fuites par temps), décode le JSON et refuse si `role !== 'admin'` ou si `Date.now() > exp`.
+
+- **Sans base de données de session** : tout ce qu’il faut est dans le jeton + le secret serveur ; changer `ADMIN_SESSION_SECRET` invalide d’un coup les jetons déjà émis.
+
+En **production**, `ADMIN_SESSION_SECRET` est **obligatoire** au démarrage de l’API (`api/src/index.mjs`), sinon le processus quitte : évite de déployer avec la valeur de développement par défaut.
+
+---
+
 ## Déploiement (Docker, proxy, DNS, reCAPTCHA)
 
 ### Vue d’ensemble
@@ -170,7 +216,7 @@ Les conteneurs Docker n’ont pas besoin d’exposer Postgres : tout passe par l
 
 ### Déploiement automatisé (CI)
 
-Le workflow **GitHub Actions** (branche `production`) se connecte en **SSH** au serveur, met à jour le dépôt Git, puis lance **Docker Compose** avec un fichier **`.env` à la racine du clone** si présent (`--env-file .env`) pour fournir notamment `POSTGRES_PASSWORD`, `RECAPTCHA_SECRET_KEY`, `VITE_RECAPTCHA_SITE_KEY`, etc.
+Le workflow **GitHub Actions** (branche `production`) se connecte en **SSH** au serveur, met à jour le dépôt Git, puis lance **Docker Compose** avec un fichier **`.env` à la racine du clone** si présent (`--env-file .env`) pour fournir notamment `POSTGRES_PASSWORD`, `ADMIN_SESSION_SECRET`, `RECAPTCHA_SECRET_KEY`, `VITE_RECAPTCHA_SITE_KEY`, etc.
 
 ---
 

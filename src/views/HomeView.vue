@@ -20,7 +20,7 @@
             <v-list-item-title class="font-weight-medium">Vue.js</v-list-item-title>
             <v-list-item-subtitle class="text-wrap mt-1">
               L’interface entière (pages, navigation, formulaires, état client) est développée avec
-              <strong>Vue.js</strong> — c’est le cœur du TP et le fil conducteur du dépôt.
+              <strong>Vue.js</strong>.
             </v-list-item-subtitle>
           </v-list-item>
           <v-list-item class="px-0">
@@ -30,7 +30,7 @@
             <v-list-item-title class="font-weight-medium">API &amp; avis</v-list-item-title>
             <v-list-item-subtitle class="text-wrap mt-1">
               Une <strong>petite API</strong> (Node / Express) est reliée à une base <strong>PostgreSQL</strong> pour
-              l’enregistrement et la modération des <strong>avis</strong> publics, avec un back-office protégé.
+              l’enregistrement et la modération des <strong>avis</strong>.
             </v-list-item-subtitle>
           </v-list-item>
           <v-list-item class="px-0">
