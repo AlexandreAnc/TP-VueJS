@@ -1,7 +1,11 @@
 import cors from 'cors'
 import express from 'express'
+import { createAdminToken, requireAdmin } from './adminToken.mjs'
 import { parseAvisId, validateAvisPayload } from './avisValidation.mjs'
 import { verifyRecaptchaV3 } from './recaptcha.mjs'
+
+/** Toutes les routes qui modifient ou listent les avis « internes » passent par ce garde. */
+const adminOnly = requireAdmin()
 
 /**
  * @param {() => import('@prisma/client').PrismaClient} getPrisma
@@ -92,7 +96,7 @@ export function createApp(getPrisma) {
     }
   })
 
-  app.get('/api/avis', async (req, res) => {
+  app.get('/api/avis', adminOnly, async (req, res) => {
     try {
       const raw = Number(req.query.limit)
       const limit = Number.isFinite(raw) ? Math.min(100, Math.max(1, Math.floor(raw))) : 30
@@ -135,7 +139,7 @@ export function createApp(getPrisma) {
     }
   })
 
-  app.patch('/api/avis/:id', async (req, res) => {
+  app.patch('/api/avis/:id', adminOnly, async (req, res) => {
     const id = parseAvisId(req.params.id)
     if (id == null) {
       return res.status(400).json({ ok: false, error: 'id invalide' })
@@ -163,7 +167,7 @@ export function createApp(getPrisma) {
     }
   })
 
-  app.delete('/api/avis/:id', async (req, res) => {
+  app.delete('/api/avis/:id', adminOnly, async (req, res) => {
     const id = parseAvisId(req.params.id)
     if (id == null) {
       return res.status(400).json({ ok: false, error: 'id invalide' })
@@ -221,7 +225,7 @@ export function createApp(getPrisma) {
       })
     }
 
-    res.json({ ok: true })
+    res.json({ ok: true, token: createAdminToken() })
   })
 
   app.use((_req, res) => {

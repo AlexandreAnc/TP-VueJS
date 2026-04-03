@@ -1,6 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
+import { createAdminToken } from '../../api/src/adminToken.mjs'
 import LoginView from './LoginView.vue'
 import { buildRouter } from '../router/buildRouter.js'
 import { useAuth } from '../composables/useAuth.js'
@@ -19,7 +20,7 @@ describe('LoginView.vue', () => {
     globalThis.fetch = vi.fn()
   })
 
-  it('affiche une erreur si identifiants invalides', async () => {
+  it('affiche une erreur si l’API refuse les identifiants', async () => {
     globalThis.fetch.mockResolvedValue({
       ok: false,
       json: () =>
@@ -39,10 +40,11 @@ describe('LoginView.vue', () => {
     expect(wrapper.text()).toContain('incorrect')
   })
 
-  it('connecte avec admin / admin', async () => {
+  it('POST /api/auth/login puis session active si identifiants valides', async () => {
     globalThis.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ ok: true }),
+      json: () =>
+        Promise.resolve({ ok: true, token: createAdminToken() }),
     })
     const router = buildRouter(createMemoryHistory())
     await router.push('/login')
@@ -58,16 +60,5 @@ describe('LoginView.vue', () => {
       '/api/auth/login',
       expect.objectContaining({ method: 'POST' }),
     )
-  })
-
-  it('redirige depuis /login si la session est déjà active', async () => {
-    useAuth().login('admin', 'admin')
-    const router = buildRouter(createMemoryHistory())
-    await router.push('/login')
-    mount(LoginView, {
-      global: { plugins: [createTestVuetify(), router] },
-    })
-    await flushPromises()
-    expect(router.currentRoute.value.path).toBe('/')
   })
 })

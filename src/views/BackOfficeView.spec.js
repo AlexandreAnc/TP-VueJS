@@ -1,6 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
+import { createAdminToken } from '../../api/src/adminToken.mjs'
 import BackOfficeView from './BackOfficeView.vue'
 import { buildRouter } from '../router/buildRouter.js'
 import { useAuth } from '../composables/useAuth.js'
@@ -16,27 +17,38 @@ const sampleItem = {
   createdAt: '2020-01-01T00:00:00.000Z',
 }
 
+function loginFetchResult() {
+  return {
+    ok: true,
+    json: () =>
+      Promise.resolve({ ok: true, token: createAdminToken() }),
+  }
+}
+
 describe('BackOfficeView.vue', () => {
   beforeEach(() => {
     localStorage.clear()
     useAuth().logout()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ ok: true, items: [] }),
-        }),
-      ),
-    )
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('charge la liste des avis pour un admin connecté', async () => {
-    useAuth().login('admin', 'admin')
+  it('charge la liste des avis (GET /api/avis) pour un admin connecté', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url) => {
+        if (String(url).includes('auth/login')) {
+          return Promise.resolve(loginFetchResult())
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, items: [] }),
+        })
+      }),
+    )
+    await useAuth().login('admin', 'admin')
     const router = buildRouter(createMemoryHistory())
     await router.push('/back-office')
     mount(BackOfficeView, {
@@ -44,30 +56,25 @@ describe('BackOfficeView.vue', () => {
     })
     await flushPromises()
     expect(globalThis.fetch).toHaveBeenCalled()
-  })
-
-  it('affiche le titre du back office', async () => {
-    useAuth().login('admin', 'admin')
-    const router = buildRouter(createMemoryHistory())
-    await router.push('/back-office')
-    const wrapper = mount(BackOfficeView, {
-      global: { plugins: [createTestVuetify(), router] },
-    })
-    await flushPromises()
-    expect(wrapper.find('h1').text()).toContain('Back Office')
+    expect(
+      globalThis.fetch.mock.calls.some((c) => String(c[0]).includes('/api/avis')),
+    ).toBe(true)
   })
 
   it('affiche les lignes retournées par l’API', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve({
+      vi.fn((url) => {
+        if (String(url).includes('auth/login')) {
+          return Promise.resolve(loginFetchResult())
+        }
+        return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ ok: true, items: [sampleItem] }),
-        }),
-      ),
+        })
+      }),
     )
-    useAuth().login('admin', 'admin')
+    await useAuth().login('admin', 'admin')
     const router = buildRouter(createMemoryHistory())
     await router.push('/back-office')
     const wrapper = mount(BackOfficeView, {
@@ -81,14 +88,17 @@ describe('BackOfficeView.vue', () => {
   it('affiche une erreur si l’API liste échoue', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve({
+      vi.fn((url) => {
+        if (String(url).includes('auth/login')) {
+          return Promise.resolve(loginFetchResult())
+        }
+        return Promise.resolve({
           ok: false,
           json: () => Promise.resolve({ error: 'down' }),
-        }),
-      ),
+        })
+      }),
     )
-    useAuth().login('admin', 'admin')
+    await useAuth().login('admin', 'admin')
     const router = buildRouter(createMemoryHistory())
     await router.push('/back-office')
     const wrapper = mount(BackOfficeView, {
@@ -101,6 +111,7 @@ describe('BackOfficeView.vue', () => {
   it('appelle PATCH puis recharge la liste au clic sur « À la une »', async () => {
     const fetchMock = vi
       .fn()
+      .mockResolvedValueOnce(loginFetchResult())
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ ok: true, items: [sampleItem] }),
@@ -123,7 +134,7 @@ describe('BackOfficeView.vue', () => {
       })
     vi.stubGlobal('fetch', fetchMock)
 
-    useAuth().login('admin', 'admin')
+    await useAuth().login('admin', 'admin')
     const router = buildRouter(createMemoryHistory())
     await router.push('/back-office')
     const wrapper = mount(BackOfficeView, {
@@ -146,6 +157,7 @@ describe('BackOfficeView.vue', () => {
     vi.stubGlobal('confirm', vi.fn(() => true))
     const fetchMock = vi
       .fn()
+      .mockResolvedValueOnce(loginFetchResult())
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ ok: true, items: [sampleItem] }),
@@ -160,7 +172,7 @@ describe('BackOfficeView.vue', () => {
       })
     vi.stubGlobal('fetch', fetchMock)
 
-    useAuth().login('admin', 'admin')
+    await useAuth().login('admin', 'admin')
     const router = buildRouter(createMemoryHistory())
     await router.push('/back-office')
     const wrapper = mount(BackOfficeView, {

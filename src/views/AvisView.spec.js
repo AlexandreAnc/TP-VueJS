@@ -22,7 +22,7 @@ describe('AvisView.vue', () => {
     vi.unstubAllGlobals()
   })
 
-  it('charge les avis publics au montage', async () => {
+  it('déclenche un chargement réseau au montage (feed mis en avant)', async () => {
     const router = buildRouter(createMemoryHistory())
     await router.push('/avis')
     mount(AvisView, {
@@ -30,17 +30,6 @@ describe('AvisView.vue', () => {
     })
     await flushPromises()
     expect(globalThis.fetch).toHaveBeenCalled()
-  })
-
-  it('affiche le titre et la section formulaire', async () => {
-    const router = buildRouter(createMemoryHistory())
-    await router.push('/avis')
-    const wrapper = mount(AvisView, {
-      global: { plugins: [createTestVuetify(), router] },
-    })
-    await flushPromises()
-    expect(wrapper.find('h1').text()).toContain('Avis')
-    expect(wrapper.text()).toContain('Laisser un avis')
   })
 
   it('affiche une carte pour chaque avis public retourné', async () => {

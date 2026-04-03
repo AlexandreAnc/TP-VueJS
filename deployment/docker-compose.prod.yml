@@ -4,8 +4,8 @@
 # Pour la racine du clone, utiliser --env-file (et PAS --project-directory sur la racine, sinon context: .. casse) :
 #   docker compose --env-file ./.env -f deployment/docker-compose.prod.yml up --build -d
 #
-# Requises : POSTGRES_PASSWORD. Optionnel : VITE_RECAPTCHA_SITE_KEY (défaut dans ce fichier si vide),
-# RECAPTCHA_SECRET_KEY (API, login admin).
+# Requises : POSTGRES_PASSWORD, ADMIN_SESSION_SECRET (signature des jetons admin après login).
+# Optionnel : VITE_RECAPTCHA_SITE_KEY (défaut dans ce fichier si vide), RECAPTCHA_SECRET_KEY (API, login admin).
 #
 # Reverse proxy Nginx (hôte) suggéré :
 #   tp-vuejs.aanc.fr      -> 127.0.0.1:8010 (web)
@@ -40,6 +40,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-tpvuejs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tpvuejs}
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?Définir ADMIN_SESSION_SECRET (phrase longue et aléatoire)}
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
+import { createAdminToken } from '../../api/src/adminToken.mjs'
 import { useAuth } from '../composables/useAuth.js'
 import { buildRouter } from './buildRouter.js'
 
@@ -7,6 +8,10 @@ describe('buildRouter', () => {
   beforeEach(() => {
     localStorage.clear()
     useAuth().logout()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('utilise startViewTransition pour la navigation si disponible', async () => {
@@ -34,7 +39,15 @@ describe('buildRouter', () => {
   })
 
   it('autorise /back-office si connecté', async () => {
-    useAuth().login('admin', 'admin')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ ok: true, token: createAdminToken() }),
+      }),
+    )
+    await useAuth().login('admin', 'admin')
     const router = buildRouter(createMemoryHistory())
     await router.push('/back-office')
     expect(router.currentRoute.value.name).toBe('back-office')

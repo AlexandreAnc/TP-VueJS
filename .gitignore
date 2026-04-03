@@ -18,8 +18,17 @@ dist-ssr
 coverage
 *.local
 
-# Secrets machine / prod (ex. VPS). Les modèles restent .env.development, etc.
+# Secrets machine / prod. Modèles versionnés : .env.development (racine + api).
 .env
+.env.*
+!.env.development
+!api/.env.development
+!.env.example
+!api/.env.example
+
+# OS
+Thumbs.db
+Desktop.ini
 
 # Editor : réglages locaux (optionnel de recommander des extensions via extensions.json)
 .vscode/*
@@ -44,3 +53,14 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Hébergement / analyse
+.vercel
+.netlify
+stats.html
+
+# Playwright (si ajout plus tard)
+/test-results/
+/playwright-report/
+/blob-report/
+playwright/.cache/

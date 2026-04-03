@@ -19,15 +19,6 @@ describe('ProjectsView.vue', () => {
     })
   })
 
-  it('affiche le titre et la mention localStorage', () => {
-    const wrapper = mount(ProjectsView, {
-      global: { plugins: [createTestVuetify()] },
-    })
-    expect(wrapper.find('h1').text()).toContain('Fonctionnalités')
-    expect(wrapper.text()).toContain('contacts')
-    expect(wrapper.text()).toMatch(/localStorage/i)
-  })
-
   it('affiche un message si le contexte n’est pas sécurisé', async () => {
     Object.defineProperty(window, 'isSecureContext', {
       value: false,

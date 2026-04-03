@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
 import { apiUrl } from '../utils/apiBase.js'
 
-const { isLoggedIn } = useAuth()
+const { isLoggedIn, authHeaders } = useAuth()
 
 const items = ref([])
 const loading = ref(false)
@@ -50,7 +50,9 @@ async function loadAvis() {
   loadError.value = ''
   loading.value = true
   try {
-    const res = await fetch(apiUrl('/api/avis?limit=100'))
+    const res = await fetch(apiUrl('/api/avis?limit=100'), {
+      headers: { ...authHeaders() },
+    })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       loadError.value = data.error || `Erreur ${res.status}`
@@ -73,7 +75,7 @@ async function toggleWhitelist(item) {
   try {
     const res = await fetch(apiUrl(`/api/avis/${item.id}`), {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ whitelisted: !item.whitelisted }),
     })
     const data = await res.json().catch(() => ({}))
@@ -96,7 +98,10 @@ async function deleteOne(item) {
   pendingId.value = item.id
   pendingAction.value = 'delete'
   try {
-    const res = await fetch(apiUrl(`/api/avis/${item.id}`), { method: 'DELETE' })
+    const res = await fetch(apiUrl(`/api/avis/${item.id}`), {
+      method: 'DELETE',
+      headers: { ...authHeaders() },
+    })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       loadError.value = data.error || `Erreur ${res.status}`

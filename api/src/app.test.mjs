@@ -1,6 +1,11 @@
 import request from 'supertest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createAdminToken } from './adminToken.mjs'
 import { createApp } from './app.mjs'
+
+function adminAuthHeader() {
+  return { Authorization: `Bearer ${createAdminToken()}` }
+}
 
 function makePrisma() {
   return {
@@ -93,6 +98,14 @@ describe('createApp', () => {
     )
   })
 
+  it('GET /api/avis 401 sans jeton admin', async () => {
+    const prisma = makePrisma()
+    const app = createApp(() => prisma)
+    const res = await request(app).get('/api/avis')
+    expect(res.status).toBe(401)
+    expect(prisma.avis.findMany).not.toHaveBeenCalled()
+  })
+
   it('GET /api/avis liste avec whitelisted', async () => {
     const row = {
       id: 1,
@@ -106,7 +119,7 @@ describe('createApp', () => {
     const prisma = makePrisma()
     prisma.avis.findMany.mockResolvedValue([row])
     const app = createApp(() => prisma)
-    const res = await request(app).get('/api/avis')
+    const res = await request(app).get('/api/avis').set(adminAuthHeader())
     expect(res.status).toBe(200)
     expect(res.body.items).toHaveLength(1)
     expect(res.body.items[0].whitelisted).toBe(false)
@@ -116,7 +129,7 @@ describe('createApp', () => {
     const prisma = makePrisma()
     prisma.avis.findMany.mockRejectedValue(new Error('boom'))
     const app = createApp(() => prisma)
-    const res = await request(app).get('/api/avis')
+    const res = await request(app).get('/api/avis').set(adminAuthHeader())
     expect(res.status).toBe(500)
     expect(res.body.ok).toBe(false)
   })
@@ -129,13 +142,34 @@ describe('createApp', () => {
     expect(res.status).toBe(500)
   })
 
+  it('PATCH /api/avis/:id 401 sans jeton', async () => {
+    const prisma = makePrisma()
+    const app = createApp(() => prisma)
+    const res = await request(app)
+      .patch('/api/avis/1')
+      .send({ whitelisted: false })
+    expect(res.status).toBe(401)
+    expect(prisma.avis.findUnique).not.toHaveBeenCalled()
+  })
+
   it('PATCH /api/avis/:id 500 si update échoue', async () => {
     const prisma = makePrisma()
     prisma.avis.findUnique.mockResolvedValue({ id: 1 })
     prisma.avis.update.mockRejectedValue(new Error('db'))
     const app = createApp(() => prisma)
-    const res = await request(app).patch('/api/avis/1').send({ whitelisted: false })
+    const res = await request(app)
+      .patch('/api/avis/1')
+      .set(adminAuthHeader())
+      .send({ whitelisted: false })
     expect(res.status).toBe(500)
+  })
+
+  it('DELETE /api/avis/:id 401 sans jeton', async () => {
+    const prisma = makePrisma()
+    const app = createApp(() => prisma)
+    const res = await request(app).delete('/api/avis/1')
+    expect(res.status).toBe(401)
+    expect(prisma.avis.findUnique).not.toHaveBeenCalled()
   })
 
   it('DELETE /api/avis/:id 500 si delete échoue', async () => {
@@ -143,7 +177,7 @@ describe('createApp', () => {
     prisma.avis.findUnique.mockResolvedValue({ id: 1 })
     prisma.avis.delete.mockRejectedValue(new Error('db'))
     const app = createApp(() => prisma)
-    const res = await request(app).delete('/api/avis/1')
+    const res = await request(app).delete('/api/avis/1').set(adminAuthHeader())
     expect(res.status).toBe(500)
   })
 
@@ -199,14 +233,20 @@ describe('createApp', () => {
   it('PATCH /api/avis/:id 400 si id invalide', async () => {
     const prisma = makePrisma()
     const app = createApp(() => prisma)
-    const res = await request(app).patch('/api/avis/0').send({ whitelisted: true })
+    const res = await request(app)
+      .patch('/api/avis/0')
+      .set(adminAuthHeader())
+      .send({ whitelisted: true })
     expect(res.status).toBe(400)
   })
 
   it('PATCH /api/avis/:id 400 si whitelisted manquant', async () => {
     const prisma = makePrisma()
     const app = createApp(() => prisma)
-    const res = await request(app).patch('/api/avis/1').send({})
+    const res = await request(app)
+      .patch('/api/avis/1')
+      .set(adminAuthHeader())
+      .send({})
     expect(res.status).toBe(400)
   })
 
@@ -224,7 +264,10 @@ describe('createApp', () => {
     prisma.avis.findUnique.mockResolvedValue({ id: 1 })
     prisma.avis.update.mockResolvedValue(item)
     const app = createApp(() => prisma)
-    const res = await request(app).patch('/api/avis/1').send({ whitelisted: true })
+    const res = await request(app)
+      .patch('/api/avis/1')
+      .set(adminAuthHeader())
+      .send({ whitelisted: true })
     expect(res.status).toBe(200)
     expect(res.body.item.whitelisted).toBe(true)
   })
@@ -233,14 +276,17 @@ describe('createApp', () => {
     const prisma = makePrisma()
     prisma.avis.findUnique.mockResolvedValue(null)
     const app = createApp(() => prisma)
-    const res = await request(app).patch('/api/avis/99').send({ whitelisted: true })
+    const res = await request(app)
+      .patch('/api/avis/99')
+      .set(adminAuthHeader())
+      .send({ whitelisted: true })
     expect(res.status).toBe(404)
   })
 
   it('DELETE /api/avis/:id 400 si id invalide', async () => {
     const prisma = makePrisma()
     const app = createApp(() => prisma)
-    const res = await request(app).delete('/api/avis/abc')
+    const res = await request(app).delete('/api/avis/abc').set(adminAuthHeader())
     expect(res.status).toBe(400)
   })
 
@@ -249,7 +295,7 @@ describe('createApp', () => {
     prisma.avis.findUnique.mockResolvedValue({ id: 3 })
     prisma.avis.delete.mockResolvedValue({ id: 3 })
     const app = createApp(() => prisma)
-    const res = await request(app).delete('/api/avis/3')
+    const res = await request(app).delete('/api/avis/3').set(adminAuthHeader())
     expect(res.status).toBe(200)
     expect(res.body.deleted).toBe(3)
   })
@@ -258,7 +304,7 @@ describe('createApp', () => {
     const prisma = makePrisma()
     prisma.avis.findUnique.mockResolvedValue(null)
     const app = createApp(() => prisma)
-    const res = await request(app).delete('/api/avis/3')
+    const res = await request(app).delete('/api/avis/3').set(adminAuthHeader())
     expect(res.status).toBe(404)
   })
 
@@ -326,6 +372,8 @@ describe('POST /api/auth/login', () => {
       .send({ username: 'admin', password: 'admin', recaptchaToken: 'x' })
     expect(res.status).toBe(200)
     expect(res.body.ok).toBe(true)
+    expect(typeof res.body.token).toBe('string')
+    expect(res.body.token.length).toBeGreaterThan(10)
   })
 
   it('503 si clé secrète absente et pas de skip', async () => {

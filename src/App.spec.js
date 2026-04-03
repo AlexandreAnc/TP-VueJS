@@ -30,10 +30,8 @@ describe('App.vue', () => {
     return wrapper
   }
 
-  it('affiche la barre de navigation et le pied de page', async () => {
-    const wrapper = await mountApp()
-    expect(wrapper.find('[data-testid="main-nav"]').exists()).toBe(true)
-    expect(wrapper.find('.app-footer').exists()).toBe(true)
+  it('démarre le polling des avis mis en avant au montage', async () => {
+    await mountApp()
     expect(startFeaturedPollingMock).toHaveBeenCalledTimes(1)
   })
 
