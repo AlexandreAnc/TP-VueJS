@@ -48,4 +48,17 @@ describe('NavBar.vue', () => {
     await wrapper.find('button.btn-logout').trigger('click')
     expect(useAuth().isLoggedIn.value).toBe(false)
   })
+
+  it('ramène à l’accueil si déconnexion depuis le back-office', async () => {
+    useAuth().login('admin', 'admin')
+    const router = buildRouter(createMemoryHistory())
+    await router.push('/back-office')
+    const wrapper = mount(NavBar, {
+      global: { plugins: [createTestVuetify(), router] },
+    })
+    await flushPromises()
+    await wrapper.find('button.btn-logout').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/')
+  })
 })

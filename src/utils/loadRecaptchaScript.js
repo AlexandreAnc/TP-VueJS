@@ -43,3 +43,27 @@ export function loadRecaptchaScript(siteKey) {
   }
   return loadPromise
 }
+
+/**
+ * Retire le script reCAPTCHA, le badge et l’API globale (à quitter la page login ou après connexion réussie).
+ */
+export function unloadRecaptchaScript() {
+  loadPromise = null
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document
+    .querySelectorAll(
+      'script[src*="google.com/recaptcha/api.js"], script[src*="www.gstatic.com/recaptcha"]',
+    )
+    .forEach((el) => el.remove())
+
+  document.querySelectorAll('.grecaptcha-badge').forEach((el) => el.remove())
+
+  try {
+    delete window.grecaptcha
+  } catch {
+    window.grecaptcha = undefined
+  }
+}

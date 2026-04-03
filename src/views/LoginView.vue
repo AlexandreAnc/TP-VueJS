@@ -1,12 +1,15 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import {
   RECAPTCHA_DEV_BYPASS_CLIENT,
   RECAPTCHA_SITE_KEY,
 } from '../config/recaptcha.js'
-import { loadRecaptchaScript } from '../utils/loadRecaptchaScript.js'
+import {
+  loadRecaptchaScript,
+  unloadRecaptchaScript,
+} from '../utils/loadRecaptchaScript.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -16,7 +19,17 @@ onMounted(() => {
   if (isLoggedIn.value) {
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     router.replace(redirect || '/')
+    return
   }
+  if (!RECAPTCHA_DEV_BYPASS_CLIENT && RECAPTCHA_SITE_KEY) {
+    loadRecaptchaScript(RECAPTCHA_SITE_KEY).catch(() => {
+      /* affichage erreur au submit si besoin */
+    })
+  }
+})
+
+onUnmounted(() => {
+  unloadRecaptchaScript()
 })
 
 const username = ref('')
@@ -50,6 +63,7 @@ async function onSubmit() {
       token,
     )
     if (result.ok) {
+      unloadRecaptchaScript()
       const redirect =
         typeof route.query.redirect === 'string' ? route.query.redirect : '/'
       router.replace(redirect || '/')

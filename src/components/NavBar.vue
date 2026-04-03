@@ -14,7 +14,12 @@ const links = [
 ]
 
 function handleLogout() {
+  const leaveBackOffice =
+    route.name === 'back-office' || route.path.startsWith('/back-office')
   logout()
+  if (leaveBackOffice) {
+    router.push('/')
+  }
 }
 </script>
 
