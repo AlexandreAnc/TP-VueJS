@@ -121,9 +121,6 @@ async function submitAvis() {
       <div class="featured-header-row">
         <h2 class="featured-heading">Avis mis en avant</h2>
       </div>
-      <p class="text-caption text-medium-emphasis mb-2">
-        Notifications pour les nouveaux avis : page <strong>Fonctionnalités</strong> du menu.
-      </p>
       <v-progress-linear v-if="featuredLoading" indeterminate color="primary" class="mb-4" />
       <v-alert
         v-else-if="featuredError"
